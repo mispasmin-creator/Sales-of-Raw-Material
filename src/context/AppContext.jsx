@@ -23,7 +23,7 @@ export const AppProvider = ({ children }) => {
         return JSON.parse(stored);
       } catch (e) {}
     }
-    return { user_name: 'admin', role: 'Admin' };
+    return { user_name: '', role: '' };
   });
 
   const [userRole, setUserRole] = useState(() => {

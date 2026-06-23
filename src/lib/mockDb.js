@@ -1,21 +1,9 @@
 // Mock Database Layer powered by LocalStorage
 // Implements transactional rules like stock deduction and serial order number generation
 
-const SEED_PRODUCTS = [
-  { id: 'p1', name: 'Steam Coal (Grade A)', available_qty: 5000.0, unit: 'MT' },
-  { id: 'p2', name: 'Hot Rolled Steel Plates', available_qty: 2500.0, unit: 'MT' },
-  { id: 'p3', name: 'Iron Ore Fine (62% Fe)', available_qty: 8000.0, unit: 'MT' },
-  { id: 'p4', name: 'Crushed Limestone', available_qty: 12000.0, unit: 'MT' },
-  { id: 'p5', name: 'Silica Sand', available_qty: 4500.0, unit: 'MT' }
-];
+const SEED_PRODUCTS = [];
 
-const SEED_PARTIES = [
-  { id: 'pt1', name: 'Apex Steel Industries Ltd.' },
-  { id: 'pt2', name: 'Global Cement Corporation' },
-  { id: 'pt3', name: 'Deccan Thermal Power Station' },
-  { id: 'pt4', name: 'Zenith Metal Works Corp.' },
-  { id: 'pt5', name: 'Pioneer Engineering Foundry' }
-];
+const SEED_PARTIES = [];
 
 const SEED_ORDERS = [];
 
@@ -23,13 +11,7 @@ const SEED_LOGISTICS = [];
 
 const SEED_INVOICES = [];
 
-const SEED_INVENTORY = [
-  { product_id: 'p1', available_qty: 5000.0, sold_qty: 0.0 },
-  { product_id: 'p2', available_qty: 2500.0, sold_qty: 0.0 },
-  { product_id: 'p3', available_qty: 8000.0, sold_qty: 0.0 },
-  { product_id: 'p4', available_qty: 12000.0, sold_qty: 0.0 },
-  { product_id: 'p5', available_qty: 4500.0, sold_qty: 0.0 }
-];
+const SEED_INVENTORY = [];
 
 const SEED_LOGS = [];
 

@@ -86,7 +86,7 @@ export const LoginModule = () => {
       {/* Floating gradient blobs for lighting depth */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-12 left-1/4 w-80 h-80 rounded-full bg-brand-200/50 blur-[100px] dark:bg-brand-950/20 animate-float" />
-        <div className="absolute bottom-12 right-1/4 w-96 h-96 rounded-full bg-indigo-200/40 blur-[110px] dark:bg-indigo-950/15 animate-float-reverse" />
+        <div className="absolute bottom-12 right-1/4 w-96 h-96 rounded-full bg-brand-200/40 blur-[110px] dark:bg-brand-950/15 animate-float-reverse" />
       </div>
 
       {/* Centered Login form container */}
@@ -95,9 +95,13 @@ export const LoginModule = () => {
         {/* Form container card (glassmorphism look) */}
         <div className="w-full max-w-[440px] bg-white/[0.85] backdrop-blur-xl border border-slate-200/60 p-8 sm:p-10 rounded-[32px] shadow-2xl relative z-10 dark:bg-slate-navy-900/90 dark:border-slate-navy-800 space-y-6 transform hover:scale-[1.005] transition-transform duration-300 animate-fade-in">
           
+          <div className="flex justify-center mb-2">
+            <img src="/logo.png" alt="Logo" className="h-20 w-auto object-contain" />
+          </div>
+
           <div className="space-y-2 text-center">
             <h2 className="text-xl font-extrabold font-heading text-slate-navy-900 dark:text-white">
-              Sign In to Your Workspace
+              Sale Of Raw Material
             </h2>
             <p className="text-xs text-slate-navy-500 dark:text-slate-navy-400 font-semibold">
               Enter your registered username and password to log in.
@@ -123,7 +127,7 @@ export const LoginModule = () => {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="e.g. sales_officer"
+                placeholder="Enter Your Username"
                 required
                 className="w-full rounded-xl border border-slate-200 bg-white/70 px-4 py-2.5 text-sm text-slate-navy-950 focus:border-brand-500 focus:bg-white focus:outline-none dark:border-slate-navy-800 dark:bg-slate-navy-950 dark:text-white transition-all shadow-xs"
               />
@@ -136,13 +140,13 @@ export const LoginModule = () => {
                   <Lock className="h-3.5 w-3.5 text-slate-navy-400" />
                   Password
                 </label>
-                <button
+                {/* <button
                   type="button"
                   onClick={handleForgotPassword}
                   className="text-xs font-semibold text-brand-650 hover:underline cursor-pointer"
                 >
                   Forgot Password?
-                </button>
+                </button> */}
               </div>
               
               <div className="relative">
@@ -181,7 +185,7 @@ export const LoginModule = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full font-bold h-11 bg-gradient-to-r from-brand-600 to-indigo-650 text-white rounded-xl shadow-lg shadow-brand-500/20 hover:from-brand-700 hover:to-indigo-750 active:scale-[0.985] transition-all flex items-center justify-center gap-2 mt-4 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full font-bold h-11 bg-gradient-to-r from-brand-600 to-brand-800 text-white rounded-xl shadow-lg shadow-brand-500/20 hover:from-brand-700 hover:to-brand-900 active:scale-[0.985] transition-all flex items-center justify-center gap-2 mt-4 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -197,21 +201,13 @@ export const LoginModule = () => {
             </button>
           </form>
 
-          {/* Info Hint */}
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5 dark:bg-slate-navy-950/40 dark:border-slate-navy-850 flex items-start gap-2.5">
-            <Info className="h-4 w-4 text-brand-650 shrink-0 mt-0.5" />
-            <div className="text-[10px] text-slate-navy-500 dark:text-slate-navy-450 leading-relaxed font-semibold">
-              <span className="font-extrabold text-slate-navy-700 dark:text-slate-navy-300 block mb-0.5">Demo Account Access Hint</span>
-              Default administrator profile is: <strong className="text-slate-navy-850 dark:text-slate-200">admin</strong> (Password: <strong className="text-slate-navy-850 dark:text-slate-200">123</strong>).
-            </div>
-          </div>
 
         </div>
 
         {/* Footer info */}
-        <p className="text-center text-[10px] text-slate-navy-400 font-semibold mt-8 tracking-wide uppercase z-10">
+        {/* <p className="text-center text-[10px] text-slate-navy-400 font-semibold mt-8 tracking-wide uppercase z-10">
           FMS Enterprise Security Version 2.4.0 (Stable)
-        </p>
+        </p> */}
       </div>
     </div>
   );

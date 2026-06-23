@@ -470,7 +470,7 @@ export const SaleOrders = () => {
             value={formFirmName}
             onChange={(e) => setFormFirmName(e.target.value)}
           >
-            <option value="">-- Choose Firm --</option>
+            <option value="">Choose Firm</option>
             {firms.map(f => <option key={f} value={f}>{f}</option>)}
           </Select>
 
@@ -479,7 +479,7 @@ export const SaleOrders = () => {
             value={formParty}
             onChange={(e) => setFormParty(e.target.value)}
           >
-            <option value="">-- Choose Party --</option>
+            <option value="">Choose Party</option>
             {parties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </Select>
 
@@ -488,7 +488,7 @@ export const SaleOrders = () => {
             value={formProduct}
             onChange={(e) => setFormProduct(e.target.value)}
           >
-            <option value="">-- Choose Product --</option>
+            <option value="">Choose Product</option>
             {products.map(p => (
               <option key={p.id} value={p.id}>
                 {p.name}

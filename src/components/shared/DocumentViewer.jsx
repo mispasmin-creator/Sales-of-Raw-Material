@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   ZoomIn, 
@@ -9,15 +9,43 @@ import {
   Info,
   Calendar,
   User,
-  HardDrive
+  HardDrive,
+  Check
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Button } from '../ui/button';
 import { formatCurrency, formatNumber } from '../../lib/utils';
+import db from '../../lib/db';
 
 export const DocumentViewer = () => {
   const { docViewer, closeDocument } = useApp();
   const [zoom, setZoom] = useState(100);
+  const [orderDetail, setOrderDetail] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (docViewer.open && docViewer.orderNo) {
+      setLoading(true);
+      db.getOrders()
+        .then(orders => {
+          const found = orders.find(o => o.order_no === docViewer.orderNo);
+          if (found) {
+            setOrderDetail(found);
+          } else {
+            setOrderDetail(null);
+          }
+        })
+        .catch(err => {
+          console.error("Error loading order detail for DocumentViewer:", err);
+          setOrderDetail(null);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      setOrderDetail(null);
+    }
+  }, [docViewer.open, docViewer.orderNo]);
 
   if (!docViewer.open) return null;
 
@@ -30,7 +58,7 @@ export const DocumentViewer = () => {
   const handleDownload = () => {
     // Simulate downloading by generating a text file representing the mock doc
     const element = document.createElement("a");
-    const file = new Blob([`FMS Mock Document\nOrder Number: ${docViewer.orderNo}\nFile: ${docViewer.fileName}\nType: ${docViewer.fileType}`], {type: 'text/plain'});
+    const file = new Blob([`FMS Document Details\nOrder Number: ${docViewer.orderNo}\nFile: ${docViewer.fileName}\nType: ${docViewer.fileType}`], {type: 'text/plain'});
     element.href = URL.createObjectURL(file);
     element.download = `${docViewer.fileName}.txt`;
     document.body.appendChild(element);
@@ -38,8 +66,33 @@ export const DocumentViewer = () => {
     document.body.removeChild(element);
   };
 
-  // Generate mock details depending on file type for maximum realism
+  // Generate dynamic details depending on file type for maximum realism
   const renderDocumentContent = () => {
+    if (loading) {
+      return (
+        <div className="bg-white text-slate-800 p-8 shadow-md rounded-sm border border-slate-200 w-full min-h-[700px] flex items-center justify-center font-sans text-xs">
+          <svg className="animate-spin h-6 w-6 text-brand-600" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <span className="ml-2 font-semibold">Loading document details...</span>
+        </div>
+      );
+    }
+
+    const formattedDate = orderDetail?.dispatch_date 
+      ? new Date(orderDetail.dispatch_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      : "June 15, 2026";
+
+    const deliveryTerms = orderDetail?.transport_type === 'FOR' ? 'FOR Destination' : 'Ex Factory Depot';
+    const quantityVal = orderDetail?.qty || 0;
+    const rateVal = orderDetail?.rate || 0;
+    const taxableVal = quantityVal * rateVal;
+    const cgstVal = taxableVal * 0.09;
+    const sgstVal = taxableVal * 0.09;
+    const igstVal = taxableVal * 0.18;
+    const totalPayableVal = taxableVal * 1.18;
+
     switch (docViewer.fileType) {
       case 'PO':
         return (
@@ -51,7 +104,7 @@ export const DocumentViewer = () => {
                 <p className="text-[10px] text-slate-500 mt-1">Ref No: PO-{docViewer.orderNo}</p>
               </div>
               <div className="text-right">
-                <h3 className="font-bold text-slate-900">Apex Steel Industries Ltd.</h3>
+                <h3 className="font-bold text-slate-900">{orderDetail?.party_name || "Consignee Name"}</h3>
                 <p>Industrial Estate, Phase III, Sector 4</p>
                 <p>New Delhi - 110025</p>
                 <p className="mt-1">GISTIN: 07AAACA4491N1ZX</p>
@@ -62,13 +115,13 @@ export const DocumentViewer = () => {
             <div className="grid grid-cols-2 gap-6 my-6 border-b pb-6">
               <div>
                 <h4 className="font-bold text-slate-500 uppercase text-[9px] mb-1">Vendor:</h4>
-                <p className="font-bold text-slate-900">Sale Of Raw Material FMS Enterprise</p>
+                <p className="font-bold text-slate-900">{orderDetail?.firm_name || "Supplier Firm"}</p>
                 <p>Corporate logistics depot, Area 12</p>
                 <p>Mumbai, Maharashtra - 400001</p>
               </div>
               <div>
                 <h4 className="font-bold text-slate-500 uppercase text-[9px] mb-1">Shipping Details:</h4>
-                <p className="font-bold text-slate-900">Apex Steel Smelter - Plant 2</p>
+                <p className="font-bold text-slate-900">{orderDetail?.party_name || "Delivery Destination"}</p>
                 <p>Plot 88A, Industrial Hub</p>
                 <p>Gurugram, Haryana - 122001</p>
               </div>
@@ -78,11 +131,11 @@ export const DocumentViewer = () => {
             <div className="grid grid-cols-3 gap-4 bg-slate-50 p-4 rounded-lg mb-6 text-[10px]">
               <div>
                 <span className="text-slate-500 block">PO Date:</span>
-                <span className="font-bold text-slate-700">June 15, 2026</span>
+                <span className="font-bold text-slate-700">{formattedDate}</span>
               </div>
               <div>
                 <span className="text-slate-500 block">Delivery Terms:</span>
-                <span className="font-bold text-slate-700">FOR Destination</span>
+                <span className="font-bold text-slate-700">{deliveryTerms}</span>
               </div>
               <div>
                 <span className="text-slate-500 block">Payment Terms:</span>
@@ -104,10 +157,10 @@ export const DocumentViewer = () => {
               <tbody>
                 <tr>
                   <td className="p-2.5 border">1</td>
-                  <td className="p-2.5 border font-semibold">Raw material contract delivery - Order no: {docViewer.orderNo}</td>
-                  <td className="p-2.5 text-right border">250.00</td>
-                  <td className="p-2.5 text-right border">₹45,000.00</td>
-                  <td className="p-2.5 text-right border font-bold">₹1,12,50,000.00</td>
+                  <td className="p-2.5 border font-semibold">{orderDetail?.product_name || "Raw material contract delivery"} - Order no: {docViewer.orderNo}</td>
+                  <td className="p-2.5 text-right border">{formatNumber(quantityVal, 2)}</td>
+                  <td className="p-2.5 text-right border">{formatCurrency(rateVal)}</td>
+                  <td className="p-2.5 text-right border font-bold">{formatCurrency(taxableVal)}</td>
                 </tr>
               </tbody>
             </table>
@@ -119,25 +172,25 @@ export const DocumentViewer = () => {
                 <ul className="list-disc pl-4 mt-2 text-[10px] space-y-1 text-slate-500">
                   <li>Bilty Copy and Weight Slip must accompany invoice.</li>
                   <li>Logistics transporter details must be updated in portal.</li>
-                  <li>Subject to terms of contract RM-FMS.</li>
+                  <li>Subject to terms of contract {docViewer.orderNo}.</li>
                 </ul>
               </div>
               <div className="w-1/3 text-right space-y-2">
                 <div className="flex justify-between text-slate-600">
                   <span>Subtotal:</span>
-                  <span>₹1,12,50,000.00</span>
+                  <span>{formatCurrency(taxableVal)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>CGST (9%):</span>
-                  <span>₹10,12,500.00</span>
+                  <span>{formatCurrency(cgstVal)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>SGST (9%):</span>
-                  <span>₹10,12,500.00</span>
+                  <span>{formatCurrency(sgstVal)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-2 font-bold text-slate-900 text-sm">
                   <span>Total Payable:</span>
-                  <span>₹1,32,75,000.00</span>
+                  <span>{formatCurrency(totalPayableVal)}</span>
                 </div>
               </div>
             </div>
@@ -151,7 +204,7 @@ export const DocumentViewer = () => {
               <div className="text-center w-1/3 border-t border-dashed pt-2">
                 <span className="block text-slate-500 text-[10px]">Authorized Signature</span>
                 <div className="h-6 flex items-center justify-center text-xs font-serif italic text-blue-800">
-                  Apex Procurements Ltd.
+                  {orderDetail?.party_name || "Authorized Partner"}
                 </div>
               </div>
             </div>
@@ -173,15 +226,15 @@ export const DocumentViewer = () => {
             <div className="grid grid-cols-2 border border-orange-200 my-6 divide-x divide-orange-200">
               <div className="p-4 space-y-2">
                 <p><span className="font-bold">Bilty No:</span> {docViewer.fileName.replace('.pdf','') || 'BL-990812'}</p>
-                <p><span className="font-bold">Date:</span> June 16, 2026</p>
-                <p><span className="font-bold">Consignor (Sender):</span> Sale Of Raw Material FMS Depot</p>
-                <p><span className="font-bold">Consignee (Receiver):</span> Apex Steel Industries Ltd.</p>
+                <p><span className="font-bold">Date:</span> {formattedDate}</p>
+                <p><span className="font-bold">Consignor (Sender):</span> {orderDetail?.firm_name || "FMS Depot"}</p>
+                <p><span className="font-bold">Consignee (Receiver):</span> {orderDetail?.party_name || "Receiver Name"}</p>
               </div>
               <div className="p-4 space-y-2">
                 <p><span className="font-bold">Order Ref:</span> {docViewer.orderNo}</p>
                 <p><span className="font-bold">Truck No:</span> MH-12-PQ-9876</p>
-                <p><span className="font-bold">From:</span> Mumbai Depot-1</p>
-                <p><span className="font-bold">To:</span> New Delhi Plant-2</p>
+                <p><span className="font-bold">From:</span> {orderDetail?.firm_name || "Consignor Depot"}</p>
+                <p><span className="font-bold">To:</span> {orderDetail?.party_name || "Consignee Plant"}</p>
               </div>
             </div>
 
@@ -199,16 +252,16 @@ export const DocumentViewer = () => {
               <tbody>
                 <tr className="border-b border-orange-200">
                   <td className="p-2 border-r border-orange-200">Loose Bulk</td>
-                  <td className="p-2 border-r border-orange-200 font-semibold">Bulk Industrial Material (Order: {docViewer.orderNo})</td>
-                  <td className="p-2 border-r border-orange-200">250.00 MT</td>
+                  <td className="p-2 border-r border-orange-200 font-semibold">{orderDetail?.product_name || "Bulk Material"} (Order: {docViewer.orderNo})</td>
+                  <td className="p-2 border-r border-orange-200">{formatNumber(quantityVal, 2)} MT</td>
                   <td className="p-2 border-r border-orange-200">₹350.00</td>
-                  <td className="p-2 font-bold">₹87,500.00</td>
+                  <td className="p-2 font-bold">{formatCurrency(quantityVal * 350)}</td>
                 </tr>
                 <tr className="font-bold bg-orange-50/50">
                   <td colSpan="2" className="p-2 border-r border-orange-200 text-right">TOTAL:</td>
-                  <td className="p-2 border-r border-orange-200">250.00 MT</td>
+                  <td className="p-2 border-r border-orange-200">{formatNumber(quantityVal, 2)} MT</td>
                   <td className="p-2 border-r border-orange-200">-</td>
-                  <td className="p-2">₹87,500.00</td>
+                  <td className="p-2">{formatCurrency(quantityVal * 350)}</td>
                 </tr>
               </tbody>
             </table>
@@ -218,11 +271,11 @@ export const DocumentViewer = () => {
               <div>
                 <p className="font-bold mb-1">Freight Summary:</p>
                 <div className="space-y-1 text-[11px]">
-                  <div className="flex justify-between"><span>Basic Freight:</span> <span className="font-bold">₹87,500.00</span></div>
+                  <div className="flex justify-between"><span>Basic Freight:</span> <span className="font-bold">{formatCurrency(quantityVal * 350)}</span></div>
                   <div className="flex justify-between"><span>Loading Charges:</span> <span>₹2,500.00</span></div>
                   <div className="flex justify-between"><span>Toll Tax & Misc:</span> <span>₹1,500.00</span></div>
                   <div className="flex justify-between border-t border-orange-200 pt-1 font-bold text-orange-950">
-                    <span>Grand Total:</span> <span>₹91,500.00</span>
+                    <span>Grand Total:</span> <span>{formatCurrency(quantityVal * 350 + 4000)}</span>
                   </div>
                 </div>
               </div>
@@ -247,8 +300,10 @@ export const DocumentViewer = () => {
             <div className="flex justify-between items-start border-b pb-6">
               <div>
                 <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 bg-brand-600 text-white rounded-lg flex items-center justify-center font-bold text-base">F</div>
-                  <h2 className="text-base font-bold text-slate-900">Sale Of Raw Material FMS</h2>
+                  <div className="h-8 w-8 bg-brand-600 text-white rounded-lg flex items-center justify-center font-bold text-base">
+                    {orderDetail?.firm_name ? orderDetail.firm_name[0] : 'F'}
+                  </div>
+                  <h2 className="text-base font-bold text-slate-900">{orderDetail?.firm_name || "Supplier Firm"}</h2>
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">Corporate logistics depot, Area 12</p>
                 <p className="text-[10px] text-slate-500">Mumbai, Maharashtra - 400001</p>
@@ -256,7 +311,7 @@ export const DocumentViewer = () => {
               <div className="text-right">
                 <h1 className="text-xl font-bold uppercase tracking-wider text-slate-900">TAX INVOICE</h1>
                 <p className="font-bold text-brand-600 mt-1">No: {docViewer.fileName.replace('.pdf','') || 'INV-2026-0001'}</p>
-                <p className="text-[9px] text-slate-500">Date: June 18, 2026</p>
+                <p className="text-[9px] text-slate-500">Date: {formattedDate}</p>
               </div>
             </div>
 
@@ -264,7 +319,7 @@ export const DocumentViewer = () => {
             <div className="grid grid-cols-2 gap-6 my-6 border-b pb-6">
               <div>
                 <h4 className="font-bold text-slate-500 uppercase text-[9px] mb-1">Billed To (Consignee):</h4>
-                <p className="font-bold text-slate-900">Apex Steel Industries Ltd.</p>
+                <p className="font-bold text-slate-900">{orderDetail?.party_name || "Billed Customer"}</p>
                 <p>Industrial Estate, Phase III, Sector 4</p>
                 <p>New Delhi - 110025</p>
                 <p className="mt-1">GISTIN: 07AAACA4491N1ZX</p>
@@ -293,10 +348,10 @@ export const DocumentViewer = () => {
                 <tr className="border-b">
                   <td className="p-2.5">1</td>
                   <td className="p-2.5">72085110</td>
-                  <td className="p-2.5 font-semibold">Bulk Industrial Raw Material - Steel Grade Plates</td>
-                  <td className="p-2.5 text-right font-medium">250.00</td>
-                  <td className="p-2.5 text-right">₹45,000.00</td>
-                  <td className="p-2.5 text-right font-bold">₹1,12,50,000.00</td>
+                  <td className="p-2.5 font-semibold">{orderDetail?.product_name || "Product Description"}</td>
+                  <td className="p-2.5 text-right font-medium">{formatNumber(quantityVal, 2)}</td>
+                  <td className="p-2.5 text-right">{formatCurrency(rateVal)}</td>
+                  <td className="p-2.5 text-right font-bold">{formatCurrency(taxableVal)}</td>
                 </tr>
               </tbody>
             </table>
@@ -307,7 +362,7 @@ export const DocumentViewer = () => {
                 <div>
                   <h4 className="font-bold text-slate-700">Bank Settlement Details:</h4>
                   <p className="mt-1">Bank Name: State Bank of India</p>
-                  <p>A/c Name: Sale Of Raw Material FMS Ltd.</p>
+                  <p>A/c Name: {orderDetail?.firm_name || "Supplier Firm"} FMS Ltd.</p>
                   <p>Account No: 4492100918823 (Current Account)</p>
                   <p>IFSC Code: SBIN0004921</p>
                 </div>
@@ -318,18 +373,15 @@ export const DocumentViewer = () => {
               <div className="w-1/3 text-right space-y-2">
                 <div className="flex justify-between text-slate-600">
                   <span>Taxable Value:</span>
-                  <span>₹1,12,50,000.00</span>
+                  <span>{formatCurrency(taxableVal)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Integrated GST (18%):</span>
-                  <span>₹20,25,000.00</span>
+                  <span>{formatCurrency(igstVal)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-2 font-bold text-slate-900 text-sm">
                   <span>Total Invoice Value:</span>
-                  <span>₹1,32,75,000.00</span>
-                </div>
-                <div className="bg-slate-50 p-2 text-center rounded border mt-2 text-[10px] text-slate-500 font-bold">
-                  Amount in words: One Crore Thirty-Two Lakhs Seventy-Five Thousand Rupees Only.
+                  <span>{formatCurrency(totalPayableVal)}</span>
                 </div>
               </div>
             </div>
@@ -343,7 +395,7 @@ export const DocumentViewer = () => {
                 <span className="block text-slate-400 text-[9px] mt-1">Generated by FMS Account Panel</span>
               </div>
               <div className="text-center w-1/3 border-t border-dashed pt-2">
-                <span className="block text-slate-500 text-[10px]">For Sale Of Raw Material FMS</span>
+                <span className="block text-slate-500 text-[10px]">For {orderDetail?.firm_name || "Supplier Firm"}</span>
                 <div className="h-6 flex items-center justify-center text-xs font-serif italic text-slate-800">
                   Accounts Controller
                 </div>

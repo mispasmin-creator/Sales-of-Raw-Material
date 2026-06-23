@@ -7,17 +7,18 @@
   --font-sans: 'Inter', sans-serif;
   --font-heading: 'Outfit', sans-serif;
 
-  --color-brand-50: #f4f6fc;
-  --color-brand-100: #e8ecfa;
-  --color-brand-200: #d5def6;
-  --color-brand-300: #b6c6ef;
-  --color-brand-400: #90a6e5;
-  --color-brand-500: #657edb;
-  --color-brand-600: #495ecf;
-  --color-brand-700: #3b4ab9;
-  --color-brand-800: #343f98;
-  --color-brand-900: #2e3979;
-  --color-brand-950: #1b1f49;
+  --color-brand-50: #f6f7f3;
+  --color-brand-100: #ecedd9;
+  --color-brand-200: #d8dbb8;
+  --color-brand-300: #bec490;
+  --color-brand-400: #a0aa66;
+  --color-brand-500: #808b49;
+  --color-brand-600: #657036;
+  --color-brand-650: #55602c;
+  --color-brand-700: #4b5b29;
+  --color-brand-800: #3f4c22;
+  --color-brand-900: #353e1d;
+  --color-brand-950: #1e2410;
 
   --color-slate-navy-50: #f5f6f8;
   --color-slate-navy-100: #eaebf1;
@@ -49,7 +50,7 @@
   --popover: 0 0% 100%;
   --popover-foreground: 224 71.4% 4.1%;
  
-  --primary: 220 65% 45%;
+  --primary: 75 38% 26%;
   --primary-foreground: 210 20% 98%;
  
   --secondary: 220 14.3% 95.9%;
@@ -66,7 +67,7 @@
 
   --border: 220 13% 91%;
   --input: 220 13% 91%;
-  --ring: 224 71.4% 4.1%;
+  --ring: 75 38% 26%;
  
   --radius: 0.75rem;
 
@@ -86,7 +87,7 @@
   --popover: 224 71% 4%;
   --popover-foreground: 210 20% 98%;
  
-  --primary: 217.2 91.2% 59.8%;
+  --primary: 75 35% 40%;
   --primary-foreground: 222.2 47.4% 11.2%;
  
   --secondary: 217.2 32.6% 17.5%;
@@ -103,7 +104,7 @@
  
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
-  --ring: 224.3 76.3% 48%;
+  --ring: 75 35% 40%;
 
   --glass-bg: rgba(15, 23, 42, 0.65);
   --glass-border: rgba(51, 65, 85, 0.5);
@@ -180,7 +181,7 @@ input, select, textarea {
 
 input:focus, select:focus, textarea:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 0 2px rgba(75, 91, 41, 0.2);
 }
 
 /* Custom Keyframe animations */

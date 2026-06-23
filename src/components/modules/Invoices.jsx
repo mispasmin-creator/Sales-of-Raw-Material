@@ -33,6 +33,7 @@ export const Invoices = () => {
   const [uploadedInvoice, setUploadedInvoice] = useState(null);
   
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [formError, setFormError] = useState('');
 
@@ -116,6 +117,7 @@ export const Invoices = () => {
       invoice_file_type: uploadedInvoice.type
     };
 
+    setSubmitting(true);
     try {
       await db.saveInvoice(invoiceData, userRole);
       
@@ -126,6 +128,8 @@ export const Invoices = () => {
       fetchOrdersPendingInvoice();
     } catch (err) {
       setFormError(err.message || 'Failed to settle invoice ledger.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -425,8 +429,8 @@ export const Invoices = () => {
               >
                 Cancel
               </Button>
-              <Button type="submit" loading={uploading} className="bg-emerald-600 hover:bg-emerald-700">
-                Complete and Settle Order
+              <Button type="submit" loading={submitting || uploading} className="bg-emerald-600 hover:bg-emerald-700">
+                {submitting ? "Settling Invoice..." : "Complete and Settle Order"}
               </Button>
             </div>
           </form>

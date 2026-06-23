@@ -67,8 +67,8 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
         {/* Header Branding */}
         <div className={cn("flex h-16 items-center border-b border-slate-100 px-6 dark:border-slate-navy-800 transition-all", sidebarCollapsed ? "justify-center px-2" : "justify-between")}>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white font-bold text-lg shadow-md shadow-brand-500/25">
-              R
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-transparent overflow-hidden">
+              <img src="/logo.png" alt="Logo" className="h-full w-full object-contain" />
             </div>
             <div className={cn("transition-all duration-300", sidebarCollapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100 w-auto")}>
               <h1 className="text-base font-bold font-heading text-slate-navy-900 dark:text-white leading-tight truncate">

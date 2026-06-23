@@ -169,12 +169,21 @@ class DatabaseService {
   async getFirms() {
     await this.delay();
     if (this.useSupabase) {
-      const { data, error } = await this.supabase
-        .from('masters')
-        .select('firm_name')
-        .not('firm_name', 'is', null);
-      if (error) throw error;
-      return Array.from(new Set(data.map(d => d.firm_name))).sort();
+      try {
+        const { data, error } = await this.supabase
+          .from('masters')
+          .select('firm_name')
+          .not('firm_name', 'is', null);
+        if (error) throw error;
+        return Array.from(new Set(
+          data
+            .map(d => d.firm_name?.toString().trim())
+            .filter(Boolean)
+        )).sort();
+      } catch (e) {
+        console.error("Supabase getFirms failed:", e);
+        return [];
+      }
     }
     if (!this.useSupabase) {
       const masters = await this.getGoogleSheetMasters();
@@ -182,7 +191,7 @@ class DatabaseService {
         return masters.firms;
       }
     }
-    return ["Pmmpl", "RKL", "Purab", "Refrasynth"];
+    return [];
   }
 
   // --- Parties ---
@@ -195,24 +204,30 @@ class DatabaseService {
       }
     }
     if (this.useSupabase) {
-      const { data, error } = await this.supabase
-        .from('masters')
-        .select('id, party_name')
-        .not('party_name', 'is', null);
-      if (error) throw error;
-      
-      const seen = new Set();
-      const uniqueParties = [];
-      data.forEach(d => {
-        if (d.party_name && !seen.has(d.party_name)) {
-          seen.add(d.party_name);
-          uniqueParties.push({
-            id: d.party_name,
-            name: d.party_name
-          });
-        }
-      });
-      return uniqueParties.sort((a, b) => a.name.localeCompare(b.name));
+      try {
+        const { data, error } = await this.supabase
+          .from('masters')
+          .select('party_name')
+          .not('party_name', 'is', null);
+        if (error) throw error;
+        
+        const seen = new Set();
+        const uniqueParties = [];
+        data.forEach(d => {
+          const name = d.party_name?.toString().trim();
+          if (name && !seen.has(name)) {
+            seen.add(name);
+            uniqueParties.push({
+              id: name,
+              name: name
+            });
+          }
+        });
+        return uniqueParties.sort((a, b) => a.name.localeCompare(b.name));
+      } catch (e) {
+        console.error("Supabase getParties failed:", e);
+        return mockDb.getParties();
+      }
     }
     return mockDb.getParties();
   }
@@ -288,30 +303,49 @@ class DatabaseService {
       }
     }
     if (this.useSupabase) {
-      // 1. Fetch unique product names from masters
-      const { data: mastersData, error: mastersErr } = await this.supabase
-        .from('masters')
-        .select('product_name')
-        .not('product_name', 'is', null);
-      if (mastersErr) throw mastersErr;
+      try {
+        // 1. Fetch unique product names from masters
+        const { data: mastersData, error: mastersErr } = await this.supabase
+          .from('masters')
+          .select('product_name')
+          .not('product_name', 'is', null);
+        if (mastersErr) throw mastersErr;
 
-      // 2. Fetch inventory values to merge stock details
-      const { data: inventoryData, error: inventoryErr } = await this.supabase
-        .from('inventory')
-        .select('product_name, available_qty, unit');
-      if (inventoryErr) throw inventoryErr;
+        // 2. Fetch inventory values to merge stock details
+        let inventoryData = [];
+        try {
+          const { data, error: inventoryErr } = await this.supabase
+            .from('inventory')
+            .select('*');
+          if (!inventoryErr && data) {
+            inventoryData = data;
+          }
+        } catch (e) {
+          console.warn("Failed to fetch inventory, using empty array fallback:", e);
+        }
 
-      const uniqueNames = Array.from(new Set(mastersData.map(m => m.product_name))).sort();
+        const uniqueNames = Array.from(new Set(
+          mastersData
+            .map(m => m.product_name?.toString().trim())
+            .filter(Boolean)
+        )).sort();
 
-      return uniqueNames.map(name => {
-        const inv = inventoryData.find(i => i.product_name === name);
-        return {
-          id: name,
-          name: name,
-          available_qty: inv ? inv.available_qty : 0.0,
-          unit: inv ? (inv.unit || 'MT') : 'MT'
-        };
-      });
+        return uniqueNames.map(name => {
+          const inv = inventoryData.find(i => 
+            (i.product_name && i.product_name.toString().trim() === name) ||
+            (i.product_id && i.product_id.toString().trim() === name)
+          );
+          return {
+            id: name,
+            name: name,
+            available_qty: inv ? parseFloat(inv.available_qty || 0) : 0.0,
+            unit: inv ? (inv.unit || 'MT') : 'MT'
+          };
+        });
+      } catch (err) {
+        console.error("Supabase getProducts failed:", err);
+        return mockDb.getProducts();
+      }
     }
     return mockDb.getProducts();
   }
@@ -327,17 +361,29 @@ class DatabaseService {
         .insert([{ product_name: name }]);
       if (masterErr) throw masterErr;
 
-      // 2. Insert into inventory
-      const { data, error } = await this.supabase
-        .from('inventory')
-        .insert([{
-          product_name: name,
-          available_qty: qtyNum,
-          sold_qty: 0,
-          unit: unit || 'MT'
-        }])
-        .select();
-      if (error) throw error;
+      // 2. Insert into inventory (try product_name first, then product_id fallback)
+      try {
+        const { error } = await this.supabase
+          .from('inventory')
+          .insert([{
+            product_name: name,
+            available_qty: qtyNum,
+            sold_qty: 0,
+            unit: unit || 'MT'
+          }]);
+        if (error) {
+          await this.supabase
+            .from('inventory')
+            .insert([{
+              product_id: name,
+              available_qty: qtyNum,
+              sold_qty: 0,
+              unit: unit || 'MT'
+            }]);
+        }
+      } catch (err) {
+        console.warn("Inventory record creation skipped or failed:", err);
+      }
 
       await this.addLog('Admin', `Product Created: ${name}`, { product_name: name, available_qty: qtyNum });
       return {
@@ -363,16 +409,28 @@ class DatabaseService {
       if (masterErr) throw masterErr;
 
       // 2. Update in inventory
-      const { data, error } = await this.supabase
-        .from('inventory')
-        .update({
-          product_name: name,
-          available_qty: qtyNum,
-          unit
-        })
-        .eq('product_name', id)
-        .select();
-      if (error) throw error;
+      try {
+        const { error } = await this.supabase
+          .from('inventory')
+          .update({
+            product_name: name,
+            available_qty: qtyNum,
+            unit
+          })
+          .eq('product_name', id);
+        if (error) {
+          await this.supabase
+            .from('inventory')
+            .update({
+              product_id: name,
+              available_qty: qtyNum,
+              unit
+            })
+            .eq('product_id', id);
+        }
+      } catch (err) {
+        console.warn("Inventory record update failed:", err);
+      }
 
       await this.addLog('Admin', `Product Updated: ${name}`, { old_name: id, name, available_qty: qtyNum });
       return {
@@ -407,11 +465,20 @@ class DatabaseService {
       if (masterErr) throw masterErr;
 
       // 2. Delete from inventory
-      const { error } = await this.supabase
-        .from('inventory')
-        .delete()
-        .eq('product_name', id);
-      if (error) throw error;
+      try {
+        const { error } = await this.supabase
+          .from('inventory')
+          .delete()
+          .eq('product_name', id);
+        if (error) {
+          await this.supabase
+            .from('inventory')
+            .delete()
+            .eq('product_id', id);
+        }
+      } catch (err) {
+        console.warn("Inventory record delete failed:", err);
+      }
 
       await this.addLog('Admin', `Product Deleted`, { product_name: id });
       return;
