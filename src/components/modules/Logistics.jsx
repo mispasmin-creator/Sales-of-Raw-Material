@@ -16,10 +16,10 @@ import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Dialog } from '../ui/dialog';
 import { useApp } from '../../context/AppContext';
-import { cn, formatCurrency, formatNumber } from '../../lib/utils';
+import { cn, formatCurrency, formatNumber, hasPageAccess, filterByFirmAccess } from '../../lib/utils';
 
 export const Logistics = () => {
-  const { addNotification, openDocument, userRole } = useApp();
+  const { addNotification, openDocument, userRole, currentUser } = useApp();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,14 +53,15 @@ export const Logistics = () => {
 
   useEffect(() => {
     fetchPendingOrders();
-  }, []);
+  }, [currentUser]);
 
   const fetchPendingOrders = async () => {
     try {
       setLoading(true);
       const orderList = await db.getOrders();
       // Filter only orders that are approved
-      const approved = orderList.filter(o => o.status !== 'Pending Approval');
+      const approved = filterByFirmAccess(orderList, currentUser)
+        .filter(o => o.status !== 'Pending Approval');
       setOrders(approved);
     } catch (e) {
       console.error("Failed to load logistics pending orders", e);
@@ -287,7 +288,7 @@ export const Logistics = () => {
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl font-bold font-heading text-slate-navy-900 dark:text-white">
-            Logistics & Dispatch Desk
+            Logistics
           </h2>
           <p className="text-xs text-slate-navy-500 font-medium">
             Manage active fleet allocations, lorry receipts (Bilty), and freight calculators.
@@ -419,7 +420,7 @@ export const Logistics = () => {
                       </td>
                       <td className="p-4 text-center">
                         {activeSubTab === 'active' ? (
-                          (userRole === 'Admin' || userRole === 'Logistics') ? (
+                          hasPageAccess(userRole, 'Logistics') ? (
                             <Button 
                               onClick={() => handleOpenLogisticsForm(order)}
                               size="sm"

@@ -17,10 +17,10 @@ import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Dialog } from '../ui/dialog';
 import { useApp } from '../../context/AppContext';
-import { cn, formatCurrency, formatNumber } from '../../lib/utils';
+import { cn, formatCurrency, formatNumber, hasPageAccess, filterByFirmAccess, parseMultiValue } from '../../lib/utils';
 
 export const SaleOrders = () => {
-  const { addNotification, openDocument, userRole } = useApp();
+  const { addNotification, openDocument, userRole, currentUser } = useApp();
   const [orders, setOrders] = useState([]);
   const [parties, setParties] = useState([]);
   const [products, setProducts] = useState([]);
@@ -57,7 +57,7 @@ export const SaleOrders = () => {
   useEffect(() => {
     fetchOrdersAndMasters();
     loadDraft();
-  }, []);
+  }, [currentUser]);
 
   const fetchOrdersAndMasters = async () => {
     try {
@@ -68,10 +68,19 @@ export const SaleOrders = () => {
         db.getProducts(),
         db.getFirms()
       ]);
-      setOrders(orderList);
+      const visibleOrders = filterByFirmAccess(orderList, currentUser);
+      const assignedFirms = parseMultiValue(currentUser?.firm_name);
+      const availableFirms = Array.from(new Set([...firmList, ...assignedFirms])).sort();
+      const visibleFirms = hasPageAccess(userRole, 'Admin') || assignedFirms.length === 0
+        ? availableFirms
+        : availableFirms.filter(firm =>
+            assignedFirms.some(assigned => assigned.toLowerCase() === firm.toLowerCase())
+          );
+
+      setOrders(visibleOrders);
       setParties(partyList);
       setProducts(prodList);
-      setFirms(firmList);
+      setFirms(visibleFirms);
       
       // Calculate next order serial number
       const num = orderList.length + 1;
@@ -196,6 +205,14 @@ export const SaleOrders = () => {
     setFormError('');
 
     if (!formFirmName.trim()) return setFormError('Please enter Firm Name.');
+    const assignedFirms = parseMultiValue(currentUser?.firm_name);
+    if (
+      !hasPageAccess(userRole, 'Admin') &&
+      assignedFirms.length > 0 &&
+      !assignedFirms.some(firm => firm.toLowerCase() === formFirmName.trim().toLowerCase())
+    ) {
+      return setFormError('You do not have access to the selected Firm Name.');
+    }
     if (!formParty) return setFormError('Please select a Party.');
     if (!formProduct) return setFormError('Please select a Product.');
     
@@ -272,7 +289,7 @@ export const SaleOrders = () => {
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl font-bold font-heading text-slate-navy-900 dark:text-white">
-            Sale Order Registry
+            Sale Orders
           </h2>
           <p className="text-xs text-slate-navy-500 font-medium">
             Create new sale agreements, upload Purchase Orders, and dispatch fleet orders.
@@ -280,7 +297,7 @@ export const SaleOrders = () => {
         </div>
 
         {/* Create button */}
-        {(userRole === 'Admin' || userRole === 'Sales') && (
+        {hasPageAccess(userRole, 'Sales') && (
           <Button onClick={handleOpenCreateModal} className="gap-1.5 shadow-xs">
             <Plus className="h-4.5 w-4.5" />
             Create Sale Order

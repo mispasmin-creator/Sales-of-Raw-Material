@@ -13,7 +13,14 @@ import { useApp, ROLES } from '../../context/AppContext';
 import db from '../../lib/db';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { cn } from '../../lib/utils';
+import { cn, parseMultiValue, hasPageAccess } from '../../lib/utils';
+
+const PAGE_ACCESS_OPTIONS = [
+  { value: ROLES.ADMIN, label: 'Admin (All actions)' },
+  { value: ROLES.SALES, label: 'Sales (Orders)' },
+  { value: ROLES.LOGISTICS, label: 'Logistics' },
+  { value: ROLES.ACCOUNTS, label: 'Accounts' }
+];
 
 export const SettingsModule = () => {
   const { 
@@ -28,7 +35,7 @@ export const SettingsModule = () => {
   // User Management State
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [formUser, setFormUser] = useState({ user_name: '', password: '', role: 'Sales', firm_name: '' });
+  const [formUser, setFormUser] = useState({ user_name: '', password: '', role: [ROLES.SALES], firm_name: [] });
   const [visiblePasswords, setVisiblePasswords] = useState({});
   const [modalError, setModalError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -55,14 +62,19 @@ export const SettingsModule = () => {
 
   const handleOpenAddModal = () => {
     setEditingUser(null);
-    setFormUser({ user_name: '', password: '', role: 'Sales', firm_name: '' });
+    setFormUser({ user_name: '', password: '', role: [ROLES.SALES], firm_name: [] });
     setModalError('');
     setShowModal(true);
   };
 
   const handleOpenEditModal = (user) => {
     setEditingUser(user);
-    setFormUser({ user_name: user.user_name, password: user.password, role: user.role, firm_name: user.firm_name || '' });
+    setFormUser({
+      user_name: user.user_name,
+      password: user.password,
+      role: parseMultiValue(user.role),
+      firm_name: parseMultiValue(user.firm_name)
+    });
     setModalError('');
     setShowModal(true);
   };
@@ -82,14 +94,18 @@ export const SettingsModule = () => {
       setModalError('Password is required.');
       return;
     }
+    if (formUser.role.length === 0) {
+      setModalError('Please select at least one Page Access option.');
+      return;
+    }
 
     setSubmitting(true);
     try {
       await db.saveUser({
         user_name: uName,
         password: uPass,
-        role: formUser.role,
-        firm_name: formUser.firm_name
+        role: formUser.role.join(', '),
+        firm_name: formUser.firm_name.join(', ')
       });
 
       addNotification(
@@ -114,10 +130,10 @@ export const SettingsModule = () => {
       return;
     }
 
-    const admins = usersList.filter(u => u.role === ROLES.ADMIN);
+    const admins = usersList.filter(u => hasPageAccess(u.role, ROLES.ADMIN));
     const userObj = usersList.find(u => u.user_name.toLowerCase() === userNameToDelete.toLowerCase());
     
-    if (userObj?.role === ROLES.ADMIN && admins.length <= 1) {
+    if (hasPageAccess(userObj?.role, ROLES.ADMIN) && admins.length <= 1) {
       alert("Aap application me aakhri Admin profile delete nahi kar sakte.");
       return;
     }
@@ -159,7 +175,7 @@ export const SettingsModule = () => {
         <div>
           <h2 className="text-2xl font-bold font-heading text-slate-navy-900 dark:text-white flex items-center gap-2">
             <Users className="h-6 w-6 text-brand-600" />
-            User Management & Access Controls
+            User Management
           </h2>
           <p className="text-xs text-slate-navy-500 font-medium">
             Manage system users, login credentials, and configure active database synchronization channels.
@@ -183,7 +199,7 @@ export const SettingsModule = () => {
               <tr className="border-b border-slate-100 dark:border-slate-navy-800 text-slate-navy-500 font-bold text-xs uppercase tracking-wider">
                 <th className="pb-3 pl-2 w-10">Avatar</th>
                 <th className="pb-3">User Name</th>
-                <th className="pb-3">Role Designation</th>
+                <th className="pb-3">Page Access</th>
                 <th className="pb-3">Associated Firm</th>
                 <th className="pb-3">Password Credentials</th>
                 <th className="pb-3 pr-2 text-right">Actions</th>
@@ -316,32 +332,73 @@ export const SettingsModule = () => {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-navy-600 dark:text-slate-navy-400">
-                  Role
+                  Page Access
                 </label>
-                <select
-                  value={formUser.role}
-                  onChange={(e) => setFormUser({ ...formUser, role: e.target.value })}
-                  className="w-full rounded-lg border border-slate-navy-200 bg-white px-3 py-2 text-sm font-semibold text-slate-navy-700 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-navy-800 dark:bg-slate-navy-900 dark:text-slate-navy-300"
-                >
-                  <option value={ROLES.ADMIN}>Admin (All actions)</option>
-                  <option value={ROLES.SALES}>Sales (Orders)</option>
-                  <option value={ROLES.LOGISTICS}>Logistics</option>
-                  <option value={ROLES.ACCOUNTS}>Accounts</option>
-                </select>
+                <div className="grid grid-cols-1 gap-2 rounded-lg border border-slate-navy-200 bg-white p-3 sm:grid-cols-2 dark:border-slate-navy-800 dark:bg-slate-navy-900">
+                  {PAGE_ACCESS_OPTIONS.map(option => (
+                    <label
+                      key={option.value}
+                      className={cn(
+                        "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold text-slate-navy-700 dark:text-slate-navy-300",
+                        formUser.role.includes(ROLES.ADMIN) && option.value !== ROLES.ADMIN
+                          ? "cursor-not-allowed opacity-50"
+                          : "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-navy-800"
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formUser.role.includes(option.value)}
+                        disabled={formUser.role.includes(ROLES.ADMIN) && option.value !== ROLES.ADMIN}
+                        onChange={() => setFormUser({
+                          ...formUser,
+                          role: option.value === ROLES.ADMIN
+                            ? (formUser.role.includes(ROLES.ADMIN) ? [] : [ROLES.ADMIN])
+                            : (formUser.role.includes(option.value)
+                              ? formUser.role.filter(value => value !== option.value)
+                              : [...formUser.role, option.value])
+                        })}
+                        className="h-4 w-4 rounded border-slate-navy-300 text-brand-600 focus:ring-brand-500"
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-navy-600 dark:text-slate-navy-400">
                   Firm Name
                 </label>
-                <select
-                  value={formUser.firm_name}
-                  onChange={(e) => setFormUser({ ...formUser, firm_name: e.target.value })}
-                  className="w-full rounded-lg border border-slate-navy-200 bg-white px-3 py-2 text-sm font-semibold text-slate-navy-700 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-navy-800 dark:bg-slate-navy-900 dark:text-slate-navy-300"
-                >
-                  <option value="">-- No Firm Assignment --</option>
-                  {firms.map(f => <option key={f} value={f}>{f}</option>)}
-                </select>
+                <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-navy-200 bg-white p-3 dark:border-slate-navy-800 dark:bg-slate-navy-900">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold text-slate-navy-700 hover:bg-slate-50 dark:text-slate-navy-300 dark:hover:bg-slate-navy-800">
+                    <input
+                      type="checkbox"
+                      checked={formUser.firm_name.length === 0}
+                      onChange={() => setFormUser({ ...formUser, firm_name: [] })}
+                      className="h-4 w-4 rounded border-slate-navy-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span>No Firm Assignment</span>
+                  </label>
+                  {firms.map(f => (
+                    <label
+                      key={f}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold text-slate-navy-700 hover:bg-slate-50 dark:text-slate-navy-300 dark:hover:bg-slate-navy-800"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formUser.firm_name.includes(f)}
+                        onChange={() => setFormUser({
+                          ...formUser,
+                          firm_name: formUser.firm_name.includes(f)
+                            ? formUser.firm_name.filter(value => value !== f)
+                            : [...formUser.firm_name, f]
+                        })}
+                        className="h-4 w-4 rounded border-slate-navy-300 text-brand-600 focus:ring-brand-500"
+                      />
+                      <span>{f}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div className="flex gap-3 justify-end pt-3 border-t dark:border-slate-navy-800">

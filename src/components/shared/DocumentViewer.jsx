@@ -14,11 +14,11 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Button } from '../ui/button';
-import { formatCurrency, formatNumber } from '../../lib/utils';
+import { formatCurrency, formatNumber, filterByFirmAccess } from '../../lib/utils';
 import db from '../../lib/db';
 
 export const DocumentViewer = () => {
-  const { docViewer, closeDocument } = useApp();
+  const { docViewer, closeDocument, currentUser } = useApp();
   const [zoom, setZoom] = useState(100);
   const [orderDetail, setOrderDetail] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -28,7 +28,8 @@ export const DocumentViewer = () => {
       setLoading(true);
       db.getOrders()
         .then(orders => {
-          const found = orders.find(o => o.order_no === docViewer.orderNo);
+          const found = filterByFirmAccess(orders, currentUser)
+            .find(o => o.order_no === docViewer.orderNo);
           if (found) {
             setOrderDetail(found);
           } else {
@@ -45,7 +46,7 @@ export const DocumentViewer = () => {
     } else {
       setOrderDetail(null);
     }
-  }, [docViewer.open, docViewer.orderNo]);
+  }, [docViewer.open, docViewer.orderNo, currentUser]);
 
   if (!docViewer.open) return null;
 

@@ -12,10 +12,11 @@ import { Invoices } from './components/modules/Invoices';
 import SettingsModule from './components/modules/Settings';
 import LoginModule from './components/modules/Login';
 
-import { useApp } from './context/AppContext';
+import { useApp, ROLES } from './context/AppContext';
+import { hasPageAccess, canAccessTab } from './lib/utils';
 
 function App() {
-  const { activeTab, isAuthenticated } = useApp();
+  const { activeTab, isAuthenticated, userRole } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (!isAuthenticated) {
@@ -24,6 +25,10 @@ function App() {
 
   const renderActiveModule = () => {
     console.log("FMS App Shell: Rendering Active Tab Module:", activeTab);
+    if (!canAccessTab(activeTab, userRole)) {
+      return <Dashboard />;
+    }
+
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;
@@ -34,7 +39,7 @@ function App() {
       case 'invoices':
         return <Invoices />;
       case 'settings':
-        return <SettingsModule />;
+        return hasPageAccess(userRole, ROLES.ADMIN) ? <SettingsModule /> : <Dashboard />;
       default:
         return <Dashboard />;
     }

@@ -6,6 +6,68 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs))
 }
 
+export const parseMultiValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.map(item => item.toString().trim()).filter(Boolean);
+  }
+
+  return (value || '')
+    .toString()
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+};
+
+export const hasPageAccess = (value, requiredAccess) => {
+  const selectedAccess = parseMultiValue(value);
+  return selectedAccess.includes('Admin') || selectedAccess.includes(requiredAccess);
+};
+
+export const filterByFirmAccess = (records, currentUser) => {
+  if (hasPageAccess(currentUser?.role, 'Admin')) return records;
+
+  const assignedFirms = parseMultiValue(currentUser?.firm_name)
+    .map(firm => firm.toLowerCase());
+
+  if (assignedFirms.length === 0) return records;
+
+  return records.filter(record =>
+    assignedFirms.includes((record?.firm_name || '').toString().trim().toLowerCase())
+  );
+};
+
+export const canAccessTab = (tab, userRole) => {
+  const tabAccess = {
+    dashboard: ['Admin', 'Sales', 'Logistics', 'Accounts'],
+    sales: ['Admin', 'Sales'],
+    logistics: ['Admin', 'Logistics'],
+    invoices: ['Admin', 'Accounts'],
+    settings: ['Admin']
+  };
+
+  return (tabAccess[tab] || tabAccess.dashboard)
+    .some(access => hasPageAccess(userRole, access));
+};
+
+const TAB_ROUTES = {
+  dashboard: '/dashboard',
+  sales: '/sale-orders',
+  logistics: '/logistics',
+  invoices: '/invoices',
+  settings: '/user-management'
+};
+
+export const getPathForTab = (tab) => TAB_ROUTES[tab] || TAB_ROUTES.dashboard;
+
+export const getTabFromPath = (pathName) => {
+  const normalizedPath = (pathName || '/')
+    .replace(/\/+$/, '')
+    .toLowerCase() || '/';
+
+  return Object.entries(TAB_ROUTES)
+    .find(([, path]) => path === normalizedPath)?.[0] || null;
+};
+
 // Format currency as Indian Rupees (INR) or general dollars
 export function formatCurrency(amount) {
   return new Intl.NumberFormat('en-IN', {

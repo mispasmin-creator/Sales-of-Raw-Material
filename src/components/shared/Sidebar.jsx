@@ -15,7 +15,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { useApp, ROLES } from '../../context/AppContext';
-import { cn } from '../../lib/utils';
+import { cn, hasPageAccess } from '../../lib/utils';
 
 export const Sidebar = ({ isOpen, setIsOpen }) => {
   const { activeTab, setActiveTab, userRole, currentUser, logout, sidebarCollapsed, setSidebarCollapsed } = useApp();
@@ -25,11 +25,11 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
     { id: 'sales', label: 'Sale Orders', icon: FileText, roles: [ROLES.ADMIN, ROLES.SALES] },
     { id: 'logistics', label: 'Logistics', icon: Truck, roles: [ROLES.ADMIN, ROLES.LOGISTICS] },
     { id: 'invoices', label: 'Invoices', icon: ReceiptText, roles: [ROLES.ADMIN, ROLES.ACCOUNTS] },
-    { id: 'settings', label: 'User Management', icon: SettingsIcon, roles: [ROLES.ADMIN, ROLES.SALES, ROLES.LOGISTICS, ROLES.ACCOUNTS] }
+    { id: 'settings', label: 'User Management', icon: SettingsIcon, roles: [ROLES.ADMIN] }
   ];
 
   // Filter menu based on user role permissions
-  const filteredMenu = menuItems.filter(item => item.roles.includes(userRole));
+  const filteredMenu = menuItems.filter(item => item.roles.some(role => hasPageAccess(userRole, role)));
 
   const handleNav = (tabId) => {
     console.log("FMS Sidebar: Navigation Clicked for Tab:", tabId);
@@ -141,7 +141,7 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
             {!sidebarCollapsed && (
               <button
                 onClick={() => {
-                  if (confirm("Kya aap logout karna chahte hain?")) {
+                  if (confirm("Are you sure you want to logout?")) {
                     logout();
                     setActiveTab('dashboard');
                   }
@@ -158,7 +158,7 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
           {sidebarCollapsed && (
             <button
               onClick={() => {
-                if (confirm("Kya aap logout karna chahte hain?")) {
+                if (confirm("Are you sure you want to logout?")) {
                   logout();
                   setActiveTab('dashboard');
                 }

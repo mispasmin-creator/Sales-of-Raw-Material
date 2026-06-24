@@ -24,13 +24,13 @@ import {
   BarChart, 
   Bar 
 } from 'recharts';
-import { formatCurrency, formatNumber } from '../../lib/utils';
+import { formatCurrency, formatNumber, filterByFirmAccess } from '../../lib/utils';
 import db from '../../lib/db';
 import { Button } from '../ui/button';
 import { useApp } from '../../context/AppContext';
 
 export const Dashboard = () => {
-  const { setActiveTab } = useApp();
+  const { setActiveTab, currentUser } = useApp();
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState({
     totalOrders: 0,
@@ -51,7 +51,7 @@ export const Dashboard = () => {
 
   useEffect(() => {
     loadDashboardData();
-  }, []);
+  }, [currentUser]);
 
   const loadDashboardData = async () => {
     try {
@@ -62,13 +62,15 @@ export const Dashboard = () => {
         db.getLogs()
       ]);
 
+      const visibleOrders = filterByFirmAccess(orders, currentUser);
+
       // 1. Calculate KPI Metrics
-      const totalOrders = orders.length;
-      const pendingLogistics = orders.filter(o => o.status === 'Pending Logistics').length;
-      const pendingInvoice = orders.filter(o => o.status === 'Pending Invoice').length;
-      const completedOrders = orders.filter(o => o.status === 'Completed').length;
+      const totalOrders = visibleOrders.length;
+      const pendingLogistics = visibleOrders.filter(o => o.status === 'Pending Logistics').length;
+      const pendingInvoice = visibleOrders.filter(o => o.status === 'Pending Invoice').length;
+      const completedOrders = visibleOrders.filter(o => o.status === 'Completed').length;
       
-      const totalSales = orders
+      const totalSales = visibleOrders
         .filter(o => o.status === 'Completed')
         .reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
       
@@ -96,7 +98,7 @@ export const Dashboard = () => {
 
       // 3. Prepare Product Sales Chart Data
       const prodMap = {};
-      orders.forEach(o => {
+      visibleOrders.forEach(o => {
         if (o.status === 'Completed') {
           prodMap[o.product_name] = (prodMap[o.product_name] || 0) + (parseFloat(o.amount) || 0);
         }
@@ -116,11 +118,14 @@ export const Dashboard = () => {
 
       // 4. Logistics Performance (Tonnage loaded)
       const logisticsList = await db.getLogistics();
-      const logisticsPerf = logisticsList.map(l => ({
+      const visibleOrderIds = new Set(visibleOrders.map(order => order.id));
+      const logisticsPerf = logisticsList
+        .filter(logistics => visibleOrderIds.has(logistics.order_id))
+        .map(l => ({
         truck: l.truck_no.split('-').pop(), // last block
         tonnage: l.actual_truck_qty,
         carrier: l.transporter_name.split(' ')[0]
-      }));
+        }));
 
       setChartData({
         monthlySales,
@@ -173,7 +178,7 @@ export const Dashboard = () => {
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl font-bold font-heading text-slate-navy-900 dark:text-white">
-            Operations & Analytics Control
+            Dashboard
           </h2>
           <p className="text-xs text-slate-navy-500 font-medium">
             Real-time tracking of raw material dispatches, logistics, and billing pipelines.

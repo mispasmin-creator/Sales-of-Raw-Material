@@ -105,11 +105,15 @@ CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_name VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL CHECK (role IN ('Admin', 'Sales', 'Logistics', 'Accounts')),
+    role VARCHAR(255) NOT NULL,
     firm_name VARCHAR(255) DEFAULT '',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Allow multiple comma-separated Page Access values on existing databases.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(255);
 
 -- ==========================================
 -- COMMON TRIGGERS FOR UPDATED_AT

@@ -15,10 +15,10 @@ import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Dialog } from '../ui/dialog';
 import { useApp } from '../../context/AppContext';
-import { cn, formatCurrency, formatNumber } from '../../lib/utils';
+import { cn, formatCurrency, formatNumber, hasPageAccess, filterByFirmAccess } from '../../lib/utils';
 
 export const Invoices = () => {
-  const { addNotification, openDocument, userRole } = useApp();
+  const { addNotification, openDocument, userRole, currentUser } = useApp();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,14 +39,15 @@ export const Invoices = () => {
 
   useEffect(() => {
     fetchOrdersPendingInvoice();
-  }, []);
+  }, [currentUser]);
 
   const fetchOrdersPendingInvoice = async () => {
     try {
       setLoading(true);
       const orderList = await db.getOrders();
       // Filter only orders that are dispatched or completed
-      const dispatched = orderList.filter(o => o.status === 'Pending Invoice' || o.status === 'Completed');
+      const dispatched = filterByFirmAccess(orderList, currentUser)
+        .filter(o => o.status === 'Pending Invoice' || o.status === 'Completed');
       setOrders(dispatched);
     } catch (e) {
       console.error("Failed to load invoice pending orders", e);
@@ -153,7 +154,7 @@ export const Invoices = () => {
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl font-bold font-heading text-slate-navy-900 dark:text-white">
-            Commercial Billing & Invoice
+            Invoices
           </h2>
           <p className="text-xs text-slate-navy-500 font-medium">
             Clear dispatches past logistics verification, register tax invoices, and complete contract closures.
@@ -285,7 +286,7 @@ export const Invoices = () => {
                       </td>
                       <td className="p-4 text-center">
                         {activeSubTab === 'active' ? (
-                          (userRole === 'Admin' || userRole === 'Accounts') ? (
+                          hasPageAccess(userRole, 'Accounts') ? (
                             <Button 
                               onClick={() => handleOpenInvoiceForm(order)}
                               size="sm"

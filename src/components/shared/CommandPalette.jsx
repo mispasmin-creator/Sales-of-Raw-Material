@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useApp, ROLES } from '../../context/AppContext';
 import db from '../../lib/db';
-import { cn } from '../../lib/utils';
+import { cn, filterByFirmAccess, canAccessTab, hasPageAccess } from '../../lib/utils';
 
 export const CommandPalette = () => {
   const { 
@@ -20,7 +20,9 @@ export const CommandPalette = () => {
     setCommandPaletteOpen, 
     setActiveTab, 
     setUserRole,
-    openDocument 
+    openDocument,
+    currentUser,
+    userRole
   } = useApp();
 
   const [query, setQuery] = useState('');
@@ -61,7 +63,7 @@ export const CommandPalette = () => {
         db.getProducts(),
         db.getParties()
       ]);
-      setDbData({ orders, products, parties });
+      setDbData({ orders: filterByFirmAccess(orders, currentUser), products, parties });
     } catch (e) {
       console.error("Failed to load command palette search data", e);
     }
@@ -75,13 +77,20 @@ export const CommandPalette = () => {
     
     // Default commands list when query is empty
     if (!queryTrim) {
-      setResults([
+      const defaultResults = [
         { type: 'navigation', label: 'Go to Dashboard', icon: Layers, action: () => setActiveTab('dashboard') },
-        { type: 'navigation', label: 'Go to Sale Orders', icon: FileText, action: () => setActiveTab('sales') },
-        { type: 'action', label: 'Simulate Sales Role', icon: User, action: () => setUserRole(ROLES.SALES) },
-        { type: 'action', label: 'Simulate Logistics Role', icon: User, action: () => setUserRole(ROLES.LOGISTICS) },
-        { type: 'action', label: 'Simulate Accounts Role', icon: User, action: () => setUserRole(ROLES.ACCOUNTS) }
-      ]);
+        ...(canAccessTab('sales', userRole)
+          ? [{ type: 'navigation', label: 'Go to Sale Orders', icon: FileText, action: () => setActiveTab('sales') }]
+          : []),
+        ...(hasPageAccess(userRole, ROLES.ADMIN)
+          ? [
+              { type: 'action', label: 'Simulate Sales Role', icon: User, action: () => setUserRole(ROLES.SALES) },
+              { type: 'action', label: 'Simulate Logistics Role', icon: User, action: () => setUserRole(ROLES.LOGISTICS) },
+              { type: 'action', label: 'Simulate Accounts Role', icon: User, action: () => setUserRole(ROLES.ACCOUNTS) }
+            ]
+          : [])
+      ];
+      setResults(defaultResults);
       return;
     }
 
@@ -97,7 +106,7 @@ export const CommandPalette = () => {
     ];
 
     pages.forEach(p => {
-      if (p.label.toLowerCase().includes(queryTrim)) {
+      if (canAccessTab(p.tab, userRole) && p.label.toLowerCase().includes(queryTrim)) {
         filtered.push({
           type: 'navigation',
           label: `Navigate: ${p.label}`,
@@ -158,14 +167,23 @@ export const CommandPalette = () => {
       { trigger: 'create order', label: 'Create New Sale Order Draft', action: () => setActiveTab('sales') },
       { trigger: 'logistics', label: 'Manage Transport & Bilty Details', action: () => setActiveTab('logistics') },
       { trigger: 'invoice', label: 'Accounts: Generate Invoice Number', action: () => setActiveTab('invoices') },
-      { trigger: 'admin', label: 'Promote privileges to Admin Role', action: () => setUserRole(ROLES.ADMIN) },
-      { trigger: 'reset', label: 'System Database Factory Reset', action: () => {
-        if(confirm("Confirm database factory reset? All localStorage data will be wiped.")) {
-          db.reset();
-          window.location.reload();
-        }
-      }}
-    ];
+      ...(hasPageAccess(userRole, ROLES.ADMIN)
+        ? [
+            { trigger: 'admin', label: 'Promote privileges to Admin Role', action: () => setUserRole(ROLES.ADMIN) },
+            { trigger: 'reset', label: 'System Database Factory Reset', action: () => {
+              if(confirm("Confirm database factory reset? All localStorage data will be wiped.")) {
+                db.reset();
+                window.location.reload();
+              }
+            }}
+          ]
+        : [])
+    ].filter(action => {
+      if (action.trigger === 'create order') return canAccessTab('sales', userRole);
+      if (action.trigger === 'logistics') return canAccessTab('logistics', userRole);
+      if (action.trigger === 'invoice') return canAccessTab('invoices', userRole);
+      return true;
+    });
 
     actions.forEach(act => {
       if (act.trigger.includes(queryTrim) || act.label.toLowerCase().includes(queryTrim)) {

@@ -168,6 +168,12 @@ class DatabaseService {
 
   async getFirms() {
     await this.delay();
+    const withRequiredFirms = (firms = []) => Array.from(new Set(
+      [...firms, 'Refrasynth']
+        .map(firm => firm?.toString().trim())
+        .filter(Boolean)
+    )).sort();
+
     if (this.useSupabase) {
       try {
         const { data, error } = await this.supabase
@@ -175,23 +181,23 @@ class DatabaseService {
           .select('firm_name')
           .not('firm_name', 'is', null);
         if (error) throw error;
-        return Array.from(new Set(
+        return withRequiredFirms(
           data
             .map(d => d.firm_name?.toString().trim())
             .filter(Boolean)
-        )).sort();
+        );
       } catch (e) {
         console.error("Supabase getFirms failed:", e);
-        return [];
+        return withRequiredFirms();
       }
     }
     if (!this.useSupabase) {
       const masters = await this.getGoogleSheetMasters();
       if (masters && masters.firms.length > 0) {
-        return masters.firms;
+        return withRequiredFirms(masters.firms);
       }
     }
-    return [];
+    return withRequiredFirms();
   }
 
   // --- Parties ---
