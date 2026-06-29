@@ -102,17 +102,7 @@ export const mockDb = {
   },
 
   addLog(userRole, action, details = {}) {
-    const logs = getCollection('activity_logs', SEED_LOGS);
-    const newLog = {
-      id: `lg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      user_role: userRole || 'System',
-      action,
-      details,
-      created_at: new Date().toISOString()
-    };
-    logs.push(newLog);
-    saveCollection('activity_logs', logs);
-    return newLog;
+    // Logging logic removed to prevent data entry into activity_logs
   },
 
   // --- Parties ---

@@ -975,19 +975,7 @@ class DatabaseService {
   }
 
   async addLog(userRole, action, details = {}) {
-    if (this.useSupabase) {
-      try {
-        await this.supabase.from('activity_logs').insert([{
-          user_role: userRole || 'System',
-          action,
-          details
-        }]);
-      } catch (e) {
-        console.error("Failed to insert live audit log", e);
-      }
-      return;
-    }
-    return mockDb.addLog(userRole, action, details);
+    // Logging logic removed to prevent data entry into activity_logs
   }
 
   async syncOrderToGoogleSheet(order) {
