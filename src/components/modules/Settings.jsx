@@ -19,7 +19,7 @@ const PAGE_ACCESS_OPTIONS = [
   { value: ROLES.ADMIN, label: 'Admin (All actions)' },
   { value: ROLES.SALES, label: 'Sales (Orders)' },
   { value: ROLES.LOGISTICS, label: 'Logistics' },
-  { value: ROLES.ACCOUNTS, label: 'Accounts' }
+  { value: ROLES.ACCOUNTS, label: 'Invoice' }
 ];
 
 export const SettingsModule = () => {
