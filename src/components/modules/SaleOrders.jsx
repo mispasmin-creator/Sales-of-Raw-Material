@@ -394,7 +394,7 @@ export const SaleOrders = () => {
                       <td className="p-4 text-slate-navy-650 font-medium dark:text-slate-navy-300">{order.firm_name || '-'}</td>
                       <td className="p-4 font-semibold text-slate-navy-800 dark:text-slate-navy-200">{order.party_name}</td>
                       <td className="p-4 text-slate-navy-500 font-medium">{order.product_name}</td>
-                      <td className="p-4 text-right font-semibold text-slate-800 dark:text-slate-200">{formatNumber(order.qty, 1)} MT</td>
+                      <td className="p-4 text-right font-semibold text-slate-800 dark:text-slate-200">{formatNumber(order.qty, 3)} MT</td>
                       <td className="p-4 text-right text-slate-navy-500">{formatCurrency(order.rate)}</td>
                       <td className="p-4">
                         <span className={cn(
@@ -674,8 +674,8 @@ export const SaleOrders = () => {
                   Insufficient Stock for {stockWarningModal.data.prodName}
                 </h4>
                 <p className="text-xs text-amber-700 dark:text-amber-500 mt-1 leading-normal font-medium">
-                  The requested order quantity is <span className="font-extrabold text-amber-900 dark:text-amber-300">{formatNumber(stockWarningModal.data.requested, 1)} MT</span>, 
-                  but the current available inventory balance is only <span className="font-extrabold text-amber-900 dark:text-amber-300">{formatNumber(stockWarningModal.data.available, 1)} MT</span>.
+                  The requested order quantity is <span className="font-extrabold text-amber-900 dark:text-amber-300">{formatNumber(stockWarningModal.data.requested, 3)} MT</span>, 
+                  but the current available inventory balance is only <span className="font-extrabold text-amber-900 dark:text-amber-300">{formatNumber(stockWarningModal.data.available, 3)} MT</span>.
                 </p>
               </div>
             </div>
@@ -738,7 +738,7 @@ export const SaleOrders = () => {
               <div className="space-y-1">
                 <span className="font-bold text-slate-navy-400 uppercase tracking-wider text-[9px]">Quantity</span>
                 <p className="font-bold text-slate-navy-900 dark:text-white bg-slate-50 dark:bg-slate-navy-900 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-navy-850">
-                  {formatNumber(selectedOrder.qty, 1)} MT
+                  {formatNumber(selectedOrder.qty, 3)} MT
                 </p>
               </div>
               <div className="space-y-1">

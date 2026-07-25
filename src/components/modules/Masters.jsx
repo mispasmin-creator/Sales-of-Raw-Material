@@ -280,7 +280,7 @@ export const Masters = () => {
                         <td className="p-4 font-mono text-[10px] text-slate-navy-400">{prod.id}</td>
                         <td className="p-4 font-bold text-slate-navy-850 dark:text-slate-navy-200">{prod.name}</td>
                         <td className="p-4 text-right font-semibold text-slate-900 dark:text-white">
-                          {formatNumber(prod.available_qty, 2)}
+                          {formatNumber(prod.available_qty, 3)}
                         </td>
                         <td className="p-4 font-medium text-slate-navy-500">{prod.unit}</td>
                         <td className="p-4">

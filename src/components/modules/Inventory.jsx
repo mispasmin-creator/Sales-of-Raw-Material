@@ -71,7 +71,7 @@ export const Inventory = () => {
           return (
             <div key={item.product_id} className="bg-red-50 text-red-700 p-3 rounded-lg border border-red-200 text-xs flex items-center gap-2 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/30">
               <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>Low Stock Alert: <strong>{item.product_name}</strong> is under 20% ({formatNumber(item.remaining_qty, 0)} {item.unit} left).</span>
+              <span>Low Stock Alert: <strong>{item.product_name}</strong> is under 20% ({formatNumber(item.remaining_qty, 3)} {item.unit} left).</span>
             </div>
           );
         })}
@@ -131,13 +131,13 @@ export const Inventory = () => {
                             {item.product_name}
                           </td>
                           <td className="p-4 text-right font-medium text-slate-navy-500">
-                            {formatNumber(item.available_qty, 1)} {item.unit}
+                            {formatNumber(item.available_qty, 3)} {item.unit}
                           </td>
                           <td className="p-4 text-right font-semibold text-brand-650 dark:text-brand-400">
-                            {formatNumber(item.sold_qty, 1)} {item.unit}
+                            {formatNumber(item.sold_qty, 3)} {item.unit}
                           </td>
                           <td className="p-4 text-right font-extrabold text-slate-900 dark:text-white">
-                            {formatNumber(item.remaining_qty, 1)} {item.unit}
+                            {formatNumber(item.remaining_qty, 3)} {item.unit}
                           </td>
                           <td className="p-4 w-44">
                             <div className="space-y-1">

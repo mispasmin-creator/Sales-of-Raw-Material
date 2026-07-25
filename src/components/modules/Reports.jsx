@@ -404,7 +404,7 @@ export const Reports = () => {
                         <td className="p-4 font-bold text-slate-navy-800 dark:text-white">{o.order_no}</td>
                         <td className="p-4 font-semibold text-slate-navy-800 dark:text-slate-navy-200">{o.party_name}</td>
                         <td className="p-4 text-slate-navy-500 font-medium">{o.product_name}</td>
-                        <td className="p-4 text-right font-semibold text-slate-800 dark:text-slate-200">{formatNumber(o.qty, 1)} MT</td>
+                        <td className="p-4 text-right font-semibold text-slate-800 dark:text-slate-200">{formatNumber(o.qty, 3)} MT</td>
                         <td className="p-4 text-right text-slate-navy-500">{formatCurrency(o.rate)}</td>
                         <td className="p-4 text-right font-bold text-slate-900 dark:text-white">{formatCurrency(o.amount)}</td>
                         <td className="p-4 font-medium text-slate-navy-500">{o.transport_type}</td>
@@ -451,7 +451,7 @@ export const Reports = () => {
                         <td className="p-4 font-semibold text-slate-navy-800 dark:text-slate-navy-200">{l.transporter_name}</td>
                         <td className="p-4 font-semibold font-mono text-[10.5px] text-slate-navy-650 dark:text-slate-navy-300">{l.truck_no}</td>
                         <td className="p-4 font-semibold text-slate-navy-800 dark:text-slate-navy-200">{l.bilty_no}</td>
-                        <td className="p-4 text-right font-semibold text-slate-800 dark:text-slate-200">{formatNumber(l.actual_truck_qty, 1)} MT</td>
+                        <td className="p-4 text-right font-semibold text-slate-800 dark:text-slate-200">{formatNumber(l.actual_truck_qty, 3)} MT</td>
                         <td className="p-4 font-medium text-slate-navy-500">{l.rate_type}</td>
                         <td className="p-4 text-right text-slate-navy-500">{formatCurrency(l.rate_value)}</td>
                         <td className="p-4 text-right font-bold text-slate-900 dark:text-white">{formatCurrency(l.freight_amount)}</td>
@@ -588,7 +588,7 @@ export const Reports = () => {
                       <td className="p-4 font-bold text-slate-navy-850 dark:text-white">{prod.name}</td>
                       <td className="p-4 text-center font-semibold text-slate-navy-500">{prod.ordersCount}</td>
                       <td className="p-4 text-right font-extrabold text-slate-800 dark:text-slate-200">
-                        {formatNumber(prod.qtyMT, 1)} {prod.unit}
+                        {formatNumber(prod.qtyMT, 3)} {prod.unit}
                       </td>
                       <td className="p-4 text-right font-extrabold text-brand-650 dark:text-brand-400">
                         {formatCurrency(prod.revenue)}

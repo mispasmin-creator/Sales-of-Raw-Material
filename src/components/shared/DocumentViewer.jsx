@@ -159,7 +159,7 @@ export const DocumentViewer = () => {
                 <tr>
                   <td className="p-2.5 border">1</td>
                   <td className="p-2.5 border font-semibold">{orderDetail?.product_name || "Raw material contract delivery"} - Order no: {docViewer.orderNo}</td>
-                  <td className="p-2.5 text-right border">{formatNumber(quantityVal, 2)}</td>
+                  <td className="p-2.5 text-right border">{formatNumber(quantityVal, 3)}</td>
                   <td className="p-2.5 text-right border">{formatCurrency(rateVal)}</td>
                   <td className="p-2.5 text-right border font-bold">{formatCurrency(taxableVal)}</td>
                 </tr>
@@ -254,13 +254,13 @@ export const DocumentViewer = () => {
                 <tr className="border-b border-orange-200">
                   <td className="p-2 border-r border-orange-200">Loose Bulk</td>
                   <td className="p-2 border-r border-orange-200 font-semibold">{orderDetail?.product_name || "Bulk Material"} (Order: {docViewer.orderNo})</td>
-                  <td className="p-2 border-r border-orange-200">{formatNumber(quantityVal, 2)} MT</td>
+                  <td className="p-2 border-r border-orange-200">{formatNumber(quantityVal, 3)} MT</td>
                   <td className="p-2 border-r border-orange-200">₹350.00</td>
                   <td className="p-2 font-bold">{formatCurrency(quantityVal * 350)}</td>
                 </tr>
                 <tr className="font-bold bg-orange-50/50">
                   <td colSpan="2" className="p-2 border-r border-orange-200 text-right">TOTAL:</td>
-                  <td className="p-2 border-r border-orange-200">{formatNumber(quantityVal, 2)} MT</td>
+                  <td className="p-2 border-r border-orange-200">{formatNumber(quantityVal, 3)} MT</td>
                   <td className="p-2 border-r border-orange-200">-</td>
                   <td className="p-2">{formatCurrency(quantityVal * 350)}</td>
                 </tr>
@@ -350,7 +350,7 @@ export const DocumentViewer = () => {
                   <td className="p-2.5">1</td>
                   <td className="p-2.5">72085110</td>
                   <td className="p-2.5 font-semibold">{orderDetail?.product_name || "Product Description"}</td>
-                  <td className="p-2.5 text-right font-medium">{formatNumber(quantityVal, 2)}</td>
+                  <td className="p-2.5 text-right font-medium">{formatNumber(quantityVal, 3)}</td>
                   <td className="p-2.5 text-right">{formatCurrency(rateVal)}</td>
                   <td className="p-2.5 text-right font-bold">{formatCurrency(taxableVal)}</td>
                 </tr>

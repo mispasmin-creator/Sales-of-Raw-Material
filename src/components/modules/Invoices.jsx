@@ -249,7 +249,7 @@ export const Invoices = () => {
                       <td className="p-4 text-slate-navy-650 font-medium dark:text-slate-navy-300">{order.firm_name || '-'}</td>
                       <td className="p-4 font-semibold text-slate-navy-800 dark:text-slate-navy-200">{order.party_name}</td>
                       <td className="p-4 text-slate-navy-500 font-medium">{order.product_name}</td>
-                      <td className="p-4 text-right font-semibold text-slate-800 dark:text-slate-200">{formatNumber(order.qty, 1)} MT</td>
+                      <td className="p-4 text-right font-semibold text-slate-800 dark:text-slate-200">{formatNumber(order.qty, 3)} MT</td>
                       <td className="p-4 text-right text-slate-navy-500">{formatCurrency(order.rate)}</td>
                       <td className="p-4">
                         <span className={cn(
