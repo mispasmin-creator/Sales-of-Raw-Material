@@ -25,6 +25,7 @@ export const SaleOrders = () => {
   const [parties, setParties] = useState([]);
   const [products, setProducts] = useState([]);
   const [firms, setFirms] = useState([]);
+  const [units, setUnits] = useState([]);
   const [activeSubTab, setActiveSubTab] = useState('active'); // 'active' | 'history'
   
   const [loading, setLoading] = useState(true);
@@ -41,6 +42,7 @@ export const SaleOrders = () => {
   const [formFirmName, setFormFirmName] = useState('');
   const [formParty, setFormParty] = useState('');
   const [formProduct, setFormProduct] = useState('');
+  const [formUnit, setFormUnit] = useState('');
   const [formQty, setFormQty] = useState('');
   const [formRate, setFormRate] = useState('');
   const [formTransport, setFormTransport] = useState('FOR');
@@ -62,11 +64,12 @@ export const SaleOrders = () => {
   const fetchOrdersAndMasters = async () => {
     try {
       setLoading(true);
-      const [orderList, partyList, prodList, firmList] = await Promise.all([
+      const [orderList, partyList, prodList, firmList, unitList] = await Promise.all([
         db.getOrders(),
         db.getParties(),
         db.getProducts(),
-        db.getFirms()
+        db.getFirms(),
+        db.getUnits()
       ]);
       const visibleOrders = filterByFirmAccess(orderList, currentUser);
       const assignedFirms = parseMultiValue(currentUser?.firm_name);
@@ -81,6 +84,7 @@ export const SaleOrders = () => {
       setParties(partyList);
       setProducts(prodList);
       setFirms(visibleFirms);
+      setUnits(unitList || []);
       
       // Calculate next order serial number
       const num = orderList.length + 1;
@@ -114,6 +118,7 @@ export const SaleOrders = () => {
       firm_name: formFirmName,
       party_id: formParty,
       product_id: formProduct,
+      unit: formUnit,
       qty: formQty,
       rate: formRate,
       transport_type: formTransport,
@@ -121,10 +126,10 @@ export const SaleOrders = () => {
       file: uploadedFile
     };
     // Only save if some fields are populated to avoid saving blank frames
-    if (formFirmName || formParty || formProduct || formQty || formRate || formDispatchDate || uploadedFile) {
+    if (formFirmName || formParty || formProduct || formUnit || formQty || formRate || formDispatchDate || uploadedFile) {
       localStorage.setItem('fms_sale_order_draft', JSON.stringify(draft));
     }
-  }, [formFirmName, formParty, formProduct, formQty, formRate, formTransport, formDispatchDate, uploadedFile, createModalOpen]);
+  }, [formFirmName, formParty, formProduct, formUnit, formQty, formRate, formTransport, formDispatchDate, uploadedFile, createModalOpen]);
 
   const loadDraft = () => {
     const raw = localStorage.getItem('fms_sale_order_draft');
@@ -134,6 +139,7 @@ export const SaleOrders = () => {
         setFormFirmName(draft.firm_name || '');
         setFormParty(draft.party_id || '');
         setFormProduct(draft.product_id || '');
+        setFormUnit(draft.unit || '');
         setFormQty(draft.qty || '');
         setFormRate(draft.rate || '');
         setFormTransport(draft.transport_type || 'FOR');
@@ -151,6 +157,7 @@ export const SaleOrders = () => {
     setFormFirmName('');
     setFormParty('');
     setFormProduct('');
+    setFormUnit('');
     setFormQty('');
     setFormRate('');
     setFormTransport('FOR');
@@ -215,9 +222,10 @@ export const SaleOrders = () => {
     }
     if (!formParty) return setFormError('Please select a Party.');
     if (!formProduct) return setFormError('Please select a Product.');
+    if (!formUnit) return setFormError('Please select a Unit.');
     
     const qtyVal = parseFloat(formQty);
-    if (isNaN(qtyVal) || qtyVal <= 0) return setFormError('Tonnage Quantity must be greater than 0.');
+    if (isNaN(qtyVal) || qtyVal <= 0) return setFormError('Quantity must be greater than 0.');
     
     const rateVal = parseFloat(formRate);
     if (isNaN(rateVal) || rateVal < 0) return setFormError('Rate must be a positive number.');
@@ -233,6 +241,7 @@ export const SaleOrders = () => {
       firm_name: formFirmName.trim(),
       party_id: formParty,
       product_id: formProduct,
+      unit: formUnit,
       qty: qtyVal,
       rate: rateVal,
       transport_type: formTransport,
@@ -412,10 +421,11 @@ export const SaleOrders = () => {
                           <button 
                             type="button"
                             onClick={() => openDocument(order.po_copy_url, `PO-${order.order_no}.pdf`, 'PO', order.order_no)}
-                            className="font-semibold text-brand-650 hover:underline hover:text-brand-700 truncate max-w-[120px] block text-left"
+                            className="inline-flex items-center gap-1 font-semibold text-brand-650 hover:text-brand-700 bg-brand-50 hover:bg-brand-100/80 dark:bg-brand-950/40 dark:hover:bg-brand-900/60 px-2.5 py-1 rounded-md text-xs transition-colors"
                             title={order.po_copy_url}
                           >
-                            {order.po_copy_url.split('/').pop()}
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>View</span>
                           </button>
                         ) : '-'}
                       </td>
@@ -503,7 +513,13 @@ export const SaleOrders = () => {
           <Select
             label="Product Name"
             value={formProduct}
-            onChange={(e) => setFormProduct(e.target.value)}
+            onChange={(e) => {
+              setFormProduct(e.target.value);
+              const found = products.find(p => p.id === e.target.value);
+              if (found && found.unit && !formUnit) {
+                setFormUnit(found.unit);
+              }
+            }}
           >
             <option value="">Choose Product</option>
             {products.map(p => (
@@ -513,16 +529,29 @@ export const SaleOrders = () => {
             ))}
           </Select>
 
+          <Select
+            label="Unit"
+            value={formUnit}
+            onChange={(e) => setFormUnit(e.target.value)}
+          >
+            <option value="">Choose Unit</option>
+            {units.map(u => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </Select>
+
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Quantity (Metric Tons)"
+              label={`Quantity ${formUnit ? `(${formUnit})` : ''}`}
               type="number"
               value={formQty}
               onChange={(e) => setFormQty(e.target.value)}
               placeholder="e.g. 250"
             />
             <Input
-              label="Rate per Metric Ton (₹)"
+              label={`Rate ${formUnit ? `per ${formUnit}` : ''} (₹)`}
               type="number"
               value={formRate}
               onChange={(e) => setFormRate(e.target.value)}

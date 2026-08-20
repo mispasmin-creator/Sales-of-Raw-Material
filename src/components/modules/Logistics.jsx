@@ -21,6 +21,7 @@ import { cn, formatCurrency, formatNumber, hasPageAccess, filterByFirmAccess } f
 export const Logistics = () => {
   const { addNotification, openDocument, userRole, currentUser } = useApp();
   const [orders, setOrders] = useState([]);
+  const [logisticsList, setLogisticsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSubTab, setActiveSubTab] = useState('active'); // 'active' | 'history'
@@ -58,11 +59,15 @@ export const Logistics = () => {
   const fetchPendingOrders = async () => {
     try {
       setLoading(true);
-      const orderList = await db.getOrders();
+      const [orderList, logsList] = await Promise.all([
+        db.getOrders(),
+        db.getLogistics()
+      ]);
       // Filter only orders that are approved
       const approved = filterByFirmAccess(orderList, currentUser)
         .filter(o => o.status !== 'Pending Approval');
       setOrders(approved);
+      setLogisticsList(logsList || []);
     } catch (e) {
       console.error("Failed to load logistics pending orders", e);
     } finally {
@@ -137,6 +142,17 @@ export const Logistics = () => {
       return true;
     }
     if (step === 2) {
+      if (transportType === 'Ex Factory') {
+        if (!transporterName.trim()) {
+          setFormError('Transporter name is required.');
+          return false;
+        }
+        if (!truckNo.trim()) {
+          setFormError('Truck registration number is required.');
+          return false;
+        }
+        return true;
+      }
       if (transportType === 'FOR') {
         if (!transporterName.trim()) {
           setFormError('Transporter name is required.');
@@ -185,12 +201,12 @@ export const Logistics = () => {
     if (!validateStep(currentStep)) return;
 
     if (currentStep === 1) {
-      if (transportType === 'Ex Factory') {
-        submitLogistics(true);
-      } else {
-        setCurrentStep(2);
-      }
+      setCurrentStep(2);
     } else if (currentStep === 2) {
+      if (transportType === 'Ex Factory') {
+        submitLogistics();
+        return;
+      }
       setRateValue('');
       if (rateType === 'Fixed') {
         setCurrentStep(3);
@@ -209,31 +225,31 @@ export const Logistics = () => {
     }
   };
 
-  const submitLogistics = async (isExFactory = false) => {
+  const submitLogistics = async () => {
     setFormError('');
 
     let logisticsData;
-    if (isExFactory || transportType === 'Ex Factory') {
+    if (transportType === 'Ex Factory') {
       logisticsData = {
         order_id: selectedOrder.id,
-        transporter_name: "Ex-Factory / Self",
-        truck_no: "Self",
-        bilty_no: "Self",
+        transporter_name: transporterName.trim(),
+        truck_no: truckNo.trim(),
+        bilty_no: biltyNo.trim() || 'Ex-Factory',
         actual_truck_qty: parseFloat(selectedOrder.qty) || 0,
-        bilty_copy_url: "",
-        bilty_file_base64: "",
-        bilty_file_name: "",
-        bilty_file_type: "",
+        bilty_copy_url: uploadedBilty ? uploadedBilty.name : '',
+        bilty_file_base64: uploadedBilty ? uploadedBilty.base64 : '',
+        bilty_file_name: uploadedBilty ? uploadedBilty.name : '',
+        bilty_file_type: uploadedBilty ? uploadedBilty.type : '',
         rate_type: "Fixed",
         rate_value: 0,
         transport_type: "Ex Factory",
-        description: ""
+        description: "Ex-Factory Dispatch"
       };
     } else {
       const actualQtyNum = parseFloat(actualTruckQty) || 0;
       const rateValNum = parseFloat(rateValue) || 0;
       const descText = rateType === 'Fixed' ? fixedDesc : perMtDesc;
-      const combinedDesc = `FOR - Transporter Notes: ${transporterDesc.trim() || 'None'}. Rate Details: ${descText.trim() || 'None'}`;
+      const combinedDesc = `FOR - Rate Details: ${descText.trim() || 'None'}`;
 
       logisticsData = {
         order_id: selectedOrder.id,
@@ -265,7 +281,7 @@ export const Logistics = () => {
   const handleSubmitLogistics = async (e) => {
     if (e) e.preventDefault();
     if (!validateStep(currentStep)) return;
-    submitLogistics(false);
+    submitLogistics();
   };
 
   // Filters
@@ -275,11 +291,18 @@ export const Logistics = () => {
         ? o.status === 'Pending Logistics' 
         : o.status === 'Pending Invoice' || o.status === 'Completed'
     )
-    .filter(o => 
-      o.order_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.party_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.product_name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    .filter(o => {
+      const q = searchQuery.toLowerCase();
+      const log = logisticsList.find(l => l.order_id === o.id || l.order_no === o.order_no);
+      return (
+        o.order_no.toLowerCase().includes(q) ||
+        o.party_name.toLowerCase().includes(q) ||
+        o.product_name.toLowerCase().includes(q) ||
+        (log?.transporter_name && log.transporter_name.toLowerCase().includes(q)) ||
+        (log?.truck_no && log.truck_no.toLowerCase().includes(q)) ||
+        (log?.bilty_no && log.bilty_no.toLowerCase().includes(q))
+      );
+    });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -363,6 +386,14 @@ export const Logistics = () => {
                   <th className="p-4">Type Of Transporting</th>
                   <th className="p-4">Date Of Dispatch</th>
                   <th className="p-4">PO Copy</th>
+                  {activeSubTab === 'history' && (
+                    <>
+                      <th className="p-4">Transporter Name</th>
+                      <th className="p-4">Truck No.</th>
+                      <th className="p-4">Bilty No.</th>
+                      <th className="p-4">Bilty Copy</th>
+                    </>
+                  )}
                   <th className="p-4 text-center">Status</th>
                   <th className="p-4 text-center">Action</th>
                 </tr>
@@ -370,83 +401,113 @@ export const Logistics = () => {
               <tbody className="text-xs divide-y divide-slate-50 dark:divide-slate-navy-900">
                 {filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan="11" className="p-8 text-center text-slate-navy-400">
+                    <td colSpan={activeSubTab === 'history' ? 15 : 11} className="p-8 text-center text-slate-navy-400">
                       {activeSubTab === 'active' 
                         ? "All dispatches are loaded. Zero orders currently pending logistics!"
                         : "No historical dispatches found."}
                     </td>
                   </tr>
                 ) : (
-                  filteredOrders.map(order => (
-                    <tr key={order.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-navy-900/30">
-                      <td className="p-4 font-bold text-brand-650 dark:text-brand-400">{order.order_no}</td>
-                      <td className="p-4 text-slate-navy-650 font-medium dark:text-slate-navy-300">{order.firm_name || '-'}</td>
-                      <td className="p-4 font-semibold text-slate-navy-800 dark:text-slate-navy-200">{order.party_name}</td>
-                      <td className="p-4 text-slate-navy-500 font-medium">{order.product_name}</td>
-                      <td className="p-4 text-right font-semibold text-slate-800 dark:text-slate-200">{formatNumber(order.qty, 3)} MT</td>
-                      <td className="p-4 text-right text-slate-navy-500">{formatCurrency(order.rate)}</td>
-                      <td className="p-4">
-                        <span className={cn(
-                          "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold",
-                          order.transport_type === 'FOR' 
-                            ? "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
-                            : "bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300"
-                        )}>
-                          {order.transport_type}
-                        </span>
-                      </td>
-                      <td className="p-4 font-medium text-slate-navy-500">{new Date(order.dispatch_date).toLocaleDateString()}</td>
-                      <td className="p-4">
-                        {order.po_copy_url ? (
-                          <button 
-                            type="button"
-                            onClick={() => openDocument(order.po_copy_url, `PO-${order.order_no}.pdf`, 'PO', order.order_no)}
-                            className="font-semibold text-brand-650 hover:underline hover:text-brand-700 truncate max-w-[120px] block text-left"
-                            title={order.po_copy_url}
-                          >
-                            {order.po_copy_url.split('/').pop()}
-                          </button>
-                        ) : '-'}
-                      </td>
-                      <td className="p-4 text-center">
-                        <span className={cn(
-                          "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase",
-                          order.status === 'Completed' && "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50",
-                          order.status === 'Pending Invoice' && "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/50",
-                          order.status === 'Pending Logistics' && "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200/50"
-                        )}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        {activeSubTab === 'active' ? (
-                          hasPageAccess(userRole, 'Logistics') ? (
-                            <Button 
-                              onClick={() => handleOpenLogisticsForm(order)}
-                              size="sm"
-                              className="shadow-xs font-semibold gap-1 mx-auto"
-                            >
-                              <Truck className="h-3.5 w-3.5" />
-                              Manage Dispatch
-                            </Button>
-                          ) : (
-                            <span className="text-[10px] text-slate-navy-400 font-bold flex items-center justify-center gap-1">
-                              Lock (Restricted)
-                            </span>
-                          )
-                        ) : (
+                  filteredOrders.map(order => {
+                    const log = logisticsList.find(l => l.order_id === order.id || l.order_no === order.order_no);
+                    return (
+                      <tr key={order.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-navy-900/30">
+                        <td className="p-4 font-bold text-brand-650 dark:text-brand-400">{order.order_no}</td>
+                        <td className="p-4 text-slate-navy-650 font-medium dark:text-slate-navy-300">{order.firm_name || '-'}</td>
+                        <td className="p-4 font-semibold text-slate-navy-800 dark:text-slate-navy-200">{order.party_name}</td>
+                        <td className="p-4 text-slate-navy-500 font-medium">{order.product_name}</td>
+                        <td className="p-4 text-right font-semibold text-slate-800 dark:text-slate-200">{formatNumber(order.qty, 3)} MT</td>
+                        <td className="p-4 text-right text-slate-navy-500">{formatCurrency(order.rate)}</td>
+                        <td className="p-4">
                           <span className={cn(
-                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border mx-auto uppercase",
-                            order.status === 'Completed'
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200/30"
-                              : "bg-slate-100 text-slate-700 border-slate-200/30"
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold",
+                            order.transport_type === 'FOR' 
+                              ? "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
+                              : "bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300"
                           )}>
-                            {order.status === 'Completed' ? 'Completed' : 'Dispatched'}
+                            {order.transport_type}
                           </span>
+                        </td>
+                        <td className="p-4 font-medium text-slate-navy-500">{new Date(order.dispatch_date).toLocaleDateString()}</td>
+                        <td className="p-4">
+                          {order.po_copy_url ? (
+                            <button 
+                              type="button"
+                              onClick={() => openDocument(order.po_copy_url, `PO-${order.order_no}.pdf`, 'PO', order.order_no)}
+                              className="inline-flex items-center gap-1 font-semibold text-brand-650 hover:text-brand-700 bg-brand-50 hover:bg-brand-100/80 dark:bg-brand-950/40 dark:hover:bg-brand-900/60 px-2.5 py-1 rounded-md text-xs transition-colors"
+                              title={order.po_copy_url}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              <span>View</span>
+                            </button>
+                          ) : '-'}
+                        </td>
+                        {activeSubTab === 'history' && (
+                          <>
+                            <td className="p-4 font-semibold text-slate-navy-800 dark:text-slate-200">
+                              {log?.transporter_name || '-'}
+                            </td>
+                            <td className="p-4 font-medium text-slate-navy-600 dark:text-slate-300">
+                              {log?.truck_no || '-'}
+                            </td>
+                            <td className="p-4 font-medium text-slate-navy-600 dark:text-slate-300">
+                              {log?.bilty_no || '-'}
+                            </td>
+                            <td className="p-4">
+                              {log?.bilty_copy_url ? (
+                                <button 
+                                  type="button"
+                                  onClick={() => openDocument(log.bilty_copy_url, `Bilty-${order.order_no}.pdf`, 'Bilty', order.order_no)}
+                                  className="inline-flex items-center gap-1 font-semibold text-brand-650 hover:text-brand-700 bg-brand-50 hover:bg-brand-100/80 dark:bg-brand-950/40 dark:hover:bg-brand-900/60 px-2.5 py-1 rounded-md text-xs transition-colors"
+                                  title={log.bilty_copy_url}
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  <span>View</span>
+                                </button>
+                              ) : '-'}
+                            </td>
+                          </>
                         )}
-                      </td>
-                    </tr>
-                  ))
+                        <td className="p-4 text-center">
+                          <span className={cn(
+                            "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase",
+                            order.status === 'Completed' && "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50",
+                            order.status === 'Pending Invoice' && "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/50",
+                            order.status === 'Pending Logistics' && "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200/50"
+                          )}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-center">
+                          {activeSubTab === 'active' ? (
+                            hasPageAccess(userRole, 'Logistics') ? (
+                              <Button 
+                                onClick={() => handleOpenLogisticsForm(order)}
+                                size="sm"
+                                className="shadow-xs font-semibold gap-1 mx-auto"
+                              >
+                                <Truck className="h-3.5 w-3.5" />
+                                Manage Dispatch
+                              </Button>
+                            ) : (
+                              <span className="text-[10px] text-slate-navy-400 font-bold flex items-center justify-center gap-1">
+                                Lock (Restricted)
+                              </span>
+                            )
+                          ) : (
+                            <span className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border mx-auto uppercase",
+                              order.status === 'Completed'
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200/30"
+                                : "bg-slate-100 text-slate-700 border-slate-200/30"
+                            )}>
+                              {order.status === 'Completed' ? 'Completed' : 'Dispatched'}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -473,20 +534,32 @@ export const Logistics = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-navy-900">
               <div>
                 <h4 className="text-sm font-extrabold text-slate-navy-900 dark:text-white">
-                  {currentStep === 1 && "Section 1 of 4: Transport Mode Selection"}
-                  {currentStep === 2 && "Section 2 of 4: For Dispatch Details"}
+                  {currentStep === 1 && (
+                    transportType === 'Ex Factory'
+                      ? "Section 1 of 2: Transport Mode Selection"
+                      : "Section 1 of 4: Transport Mode Selection"
+                  )}
+                  {currentStep === 2 && (
+                    transportType === 'Ex Factory'
+                      ? "Section 2 of 2: Ex-Factory Dispatch Details"
+                      : "Section 2 of 4: For Dispatch Details"
+                  )}
                   {currentStep === 3 && "Section 3 of 4: Fixed Freight Rate"}
                   {currentStep === 4 && "Section 4 of 4: Per Metric Ton Freight Rate"}
                 </h4>
                 <p className="text-[10px] text-slate-navy-450 dark:text-slate-navy-400 font-medium">
                   {currentStep === 1 && "Select the logistics transport arrangement model."}
-                  {currentStep === 2 && "Enter transport agency and truck parameters."}
+                  {currentStep === 2 && (
+                    transportType === 'Ex Factory'
+                      ? "Enter transport agency and truck parameters."
+                      : "Enter transport agency and truck parameters."
+                  )}
                   {currentStep === 3 && "Define flat fixed freight details."}
                   {currentStep === 4 && "Define rate basis per metric ton details."}
                 </p>
               </div>
               <span className="text-xs font-black text-brand-650 bg-brand-50 px-2 py-1 rounded dark:bg-brand-950/20">
-                Step {currentStep} of 4
+                Step {currentStep} of {transportType === 'Ex Factory' ? 2 : 4}
               </span>
             </div>
 
@@ -512,19 +585,28 @@ export const Logistics = () => {
               </div>
             )}
 
-            {/* Step 2 Content */}
-            {currentStep === 2 && (
+            {/* Step 2 Content - Ex Factory */}
+            {currentStep === 2 && transportType === 'Ex Factory' && (
               <div className="space-y-4 animate-fade-in">
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-bold text-brand-650 dark:text-brand-400 uppercase tracking-wider">For</span>
-                  <Input
-                    label="Description (optional)"
-                    value={transporterDesc}
-                    onChange={(e) => setTransporterDesc(e.target.value)}
-                    placeholder="Enter transport/transporter notes..."
-                  />
-                </div>
+                <Input
+                  label="Transporter Name *"
+                  value={transporterName}
+                  onChange={(e) => setTransporterName(e.target.value)}
+                  placeholder="e.g. FastTrack Cargo Carrier or Self"
+                />
 
+                <Input
+                  label="Truck No. *"
+                  value={truckNo}
+                  onChange={(e) => setTruckNo(e.target.value)}
+                  placeholder="e.g. MH-12-PQ-9876"
+                />
+              </div>
+            )}
+
+            {/* Step 2 Content - FOR */}
+            {currentStep === 2 && transportType === 'FOR' && (
+              <div className="space-y-4 animate-fade-in">
                 <Input
                   label="Transporter Name *"
                   value={transporterName}
@@ -741,11 +823,7 @@ export const Logistics = () => {
               )}
 
               {/* Show Next or Confirm Dispatch button depending on the step and selection */}
-              {currentStep === 1 && transportType === 'Ex Factory' ? (
-                <Button type="submit" loading={uploading}>
-                  Confirm Dispatch
-                </Button>
-              ) : (currentStep === 3 || currentStep === 4) ? (
+              {(currentStep === 2 && transportType === 'Ex Factory') || currentStep === 3 || currentStep === 4 ? (
                 <Button type="submit" loading={uploading}>
                   Confirm Dispatch
                 </Button>

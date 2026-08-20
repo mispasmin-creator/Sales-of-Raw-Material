@@ -200,6 +200,35 @@ class DatabaseService {
     return withRequiredFirms();
   }
 
+  // --- Units ---
+  async getUnits() {
+    await this.delay();
+    if (this.useSupabase) {
+      try {
+        const { data, error } = await this.supabase
+          .from('masters')
+          .select('unit')
+          .not('unit', 'is', null);
+        if (error) throw error;
+        const uniqueUnits = Array.from(new Set(
+          data
+            .map(d => d.unit?.toString().trim())
+            .filter(Boolean)
+        )).sort();
+        if (uniqueUnits.length > 0) return uniqueUnits;
+      } catch (e) {
+        console.error("Supabase getUnits failed:", e);
+      }
+    }
+    if (!this.useSupabase) {
+      const masters = await this.getGoogleSheetMasters();
+      if (masters && masters.units && masters.units.length > 0) {
+        return masters.units;
+      }
+    }
+    return ['MT', 'KG', 'PCS', 'TON'];
+  }
+
   // --- Parties ---
   async getParties() {
     await this.delay();

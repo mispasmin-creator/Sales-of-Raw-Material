@@ -20,6 +20,7 @@ import { cn, formatCurrency, formatNumber, hasPageAccess, filterByFirmAccess } f
 export const Invoices = () => {
   const { addNotification, openDocument, userRole, currentUser } = useApp();
   const [orders, setOrders] = useState([]);
+  const [logisticsList, setLogisticsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSubTab, setActiveSubTab] = useState('active'); // 'active' | 'history'
@@ -44,11 +45,15 @@ export const Invoices = () => {
   const fetchOrdersPendingInvoice = async () => {
     try {
       setLoading(true);
-      const orderList = await db.getOrders();
+      const [orderList, logsList] = await Promise.all([
+        db.getOrders(),
+        db.getLogistics()
+      ]);
       // Filter only orders that are dispatched or completed
       const dispatched = filterByFirmAccess(orderList, currentUser)
         .filter(o => o.status === 'Pending Invoice' || o.status === 'Completed');
       setOrders(dispatched);
+      setLogisticsList(logsList || []);
     } catch (e) {
       console.error("Failed to load invoice pending orders", e);
     } finally {
@@ -141,11 +146,18 @@ export const Invoices = () => {
         ? o.status === 'Pending Invoice' 
         : o.status === 'Completed'
     )
-    .filter(o => 
-      o.order_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.party_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.product_name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    .filter(o => {
+      const q = searchQuery.toLowerCase();
+      const log = logisticsList.find(l => l.order_id === o.id || l.order_no === o.order_no);
+      return (
+        o.order_no.toLowerCase().includes(q) ||
+        o.party_name.toLowerCase().includes(q) ||
+        o.product_name.toLowerCase().includes(q) ||
+        (log?.transporter_name && log.transporter_name.toLowerCase().includes(q)) ||
+        (log?.truck_no && log.truck_no.toLowerCase().includes(q)) ||
+        (log?.bilty_no && log.bilty_no.toLowerCase().includes(q))
+      );
+    });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -229,6 +241,10 @@ export const Invoices = () => {
                   <th className="p-4">Type Of Transporting</th>
                   <th className="p-4">Date Of Dispatch</th>
                   <th className="p-4">PO Copy</th>
+                  <th className="p-4">Transporter Name</th>
+                  <th className="p-4">Truck No.</th>
+                  <th className="p-4">Bilty No.</th>
+                  <th className="p-4">Bilty Copy</th>
                   <th className="p-4 text-center">Status</th>
                   <th className="p-4 text-center">Action</th>
                 </tr>
@@ -236,78 +252,104 @@ export const Invoices = () => {
               <tbody className="text-xs divide-y divide-slate-50 dark:divide-slate-navy-900">
                 {filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan="11" className="p-8 text-center text-slate-navy-400">
+                    <td colSpan="15" className="p-8 text-center text-slate-navy-400">
                       {activeSubTab === 'active'
                         ? "Zero orders are pending invoicing. Accounts ledger matches dispatches."
                         : "No invoice history entries found."}
                     </td>
                   </tr>
                 ) : (
-                  filteredOrders.map(order => (
-                    <tr key={order.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-navy-900/30">
-                      <td className="p-4 font-bold text-brand-650 dark:text-brand-400">{order.order_no}</td>
-                      <td className="p-4 text-slate-navy-650 font-medium dark:text-slate-navy-300">{order.firm_name || '-'}</td>
-                      <td className="p-4 font-semibold text-slate-navy-800 dark:text-slate-navy-200">{order.party_name}</td>
-                      <td className="p-4 text-slate-navy-500 font-medium">{order.product_name}</td>
-                      <td className="p-4 text-right font-semibold text-slate-800 dark:text-slate-200">{formatNumber(order.qty, 3)} MT</td>
-                      <td className="p-4 text-right text-slate-navy-500">{formatCurrency(order.rate)}</td>
-                      <td className="p-4">
-                        <span className={cn(
-                          "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold",
-                          order.transport_type === 'FOR' 
-                            ? "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
-                            : "bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300"
-                        )}>
-                          {order.transport_type}
-                        </span>
-                      </td>
-                      <td className="p-4 font-medium text-slate-navy-500">{new Date(order.dispatch_date).toLocaleDateString()}</td>
-                      <td className="p-4">
-                        {order.po_copy_url ? (
-                          <button 
-                            type="button"
-                            onClick={() => openDocument(order.po_copy_url, `PO-${order.order_no}.pdf`, 'PO', order.order_no)}
-                            className="font-semibold text-brand-650 hover:underline hover:text-brand-700 truncate max-w-[120px] block text-left"
-                            title={order.po_copy_url}
-                          >
-                            {order.po_copy_url.split('/').pop()}
-                          </button>
-                        ) : '-'}
-                      </td>
-                      <td className="p-4 text-center">
-                        <span className={cn(
-                          "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase",
-                          order.status === 'Completed' && "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50",
-                          order.status === 'Pending Invoice' && "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/50",
-                          order.status === 'Pending Logistics' && "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200/50"
-                        )}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        {activeSubTab === 'active' ? (
-                          hasPageAccess(userRole, 'Accounts') ? (
-                            <Button 
-                              onClick={() => handleOpenInvoiceForm(order)}
-                              size="sm"
-                              className="shadow-xs font-semibold gap-1 bg-emerald-600 hover:bg-emerald-700 mx-auto"
-                            >
-                              <ReceiptText className="h-3.5 w-3.5" />
-                              Clear Invoice
-                            </Button>
-                          ) : (
-                            <span className="text-[10px] text-slate-navy-400 font-bold flex items-center justify-center gap-1">
-                              Lock (Restricted)
-                            </span>
-                          )
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/20 border border-emerald-200/30 mx-auto uppercase">
-                            Paid & Closed
+                  filteredOrders.map(order => {
+                    const log = logisticsList.find(l => l.order_id === order.id || l.order_no === order.order_no);
+                    return (
+                      <tr key={order.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-navy-900/30">
+                        <td className="p-4 font-bold text-brand-650 dark:text-brand-400">{order.order_no}</td>
+                        <td className="p-4 text-slate-navy-650 font-medium dark:text-slate-navy-300">{order.firm_name || '-'}</td>
+                        <td className="p-4 font-semibold text-slate-navy-800 dark:text-slate-navy-200">{order.party_name}</td>
+                        <td className="p-4 text-slate-navy-500 font-medium">{order.product_name}</td>
+                        <td className="p-4 text-right font-semibold text-slate-800 dark:text-slate-200">{formatNumber(order.qty, 3)} MT</td>
+                        <td className="p-4 text-right text-slate-navy-500">{formatCurrency(order.rate)}</td>
+                        <td className="p-4">
+                          <span className={cn(
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold",
+                            order.transport_type === 'FOR' 
+                              ? "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
+                              : "bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300"
+                          )}>
+                            {order.transport_type}
                           </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="p-4 font-medium text-slate-navy-500">{new Date(order.dispatch_date).toLocaleDateString()}</td>
+                        <td className="p-4">
+                          {order.po_copy_url ? (
+                            <button 
+                              type="button"
+                              onClick={() => openDocument(order.po_copy_url, `PO-${order.order_no}.pdf`, 'PO', order.order_no)}
+                              className="inline-flex items-center gap-1 font-semibold text-brand-650 hover:text-brand-700 bg-brand-50 hover:bg-brand-100/80 dark:bg-brand-950/40 dark:hover:bg-brand-900/60 px-2.5 py-1 rounded-md text-xs transition-colors"
+                              title={order.po_copy_url}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              <span>View</span>
+                            </button>
+                          ) : '-'}
+                        </td>
+                        <td className="p-4 font-semibold text-slate-navy-800 dark:text-slate-200">
+                          {log?.transporter_name || '-'}
+                        </td>
+                        <td className="p-4 font-medium text-slate-navy-600 dark:text-slate-300">
+                          {log?.truck_no || '-'}
+                        </td>
+                        <td className="p-4 font-medium text-slate-navy-600 dark:text-slate-300">
+                          {log?.bilty_no || '-'}
+                        </td>
+                        <td className="p-4">
+                          {log?.bilty_copy_url ? (
+                            <button 
+                              type="button"
+                              onClick={() => openDocument(log.bilty_copy_url, `Bilty-${order.order_no}.pdf`, 'Bilty', order.order_no)}
+                              className="inline-flex items-center gap-1 font-semibold text-brand-650 hover:text-brand-700 bg-brand-50 hover:bg-brand-100/80 dark:bg-brand-950/40 dark:hover:bg-brand-900/60 px-2.5 py-1 rounded-md text-xs transition-colors"
+                              title={log.bilty_copy_url}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              <span>View</span>
+                            </button>
+                          ) : '-'}
+                        </td>
+                        <td className="p-4 text-center">
+                          <span className={cn(
+                            "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase",
+                            order.status === 'Completed' && "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50",
+                            order.status === 'Pending Invoice' && "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/50",
+                            order.status === 'Pending Logistics' && "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200/50"
+                          )}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-center">
+                          {activeSubTab === 'active' ? (
+                            hasPageAccess(userRole, 'Accounts') ? (
+                              <Button 
+                                onClick={() => handleOpenInvoiceForm(order)}
+                                size="sm"
+                                className="shadow-xs font-semibold gap-1 bg-emerald-600 hover:bg-emerald-700 mx-auto"
+                              >
+                                <ReceiptText className="h-3.5 w-3.5" />
+                                Clear Invoice
+                              </Button>
+                            ) : (
+                              <span className="text-[10px] text-slate-navy-400 font-bold flex items-center justify-center gap-1">
+                                Lock (Restricted)
+                              </span>
+                            )
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/20 border border-emerald-200/30 mx-auto uppercase">
+                              Paid & Closed
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
