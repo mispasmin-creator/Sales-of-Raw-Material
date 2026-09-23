@@ -43,7 +43,7 @@ export const Logistics = () => {
   const [biltyNo, setBiltyNo] = useState('');
   const [actualTruckQty, setActualTruckQty] = useState('');
   const [rateType, setRateType] = useState('Per MT'); // 'Fixed' | 'Per MT'
-  const [rateValue, setRateValue] = useState('');
+  const [rateValue, setRateValue] = useState('0');
   
   // File Upload
   const [uploadedBilty, setUploadedBilty] = useState(null);
@@ -84,7 +84,7 @@ export const Logistics = () => {
     setBiltyNo('');
     setActualTruckQty(order.qty.toString()); // default to ordered quantity
     setRateType('Per MT');
-    setRateValue('');
+    setRateValue('0');
     setUploadedBilty(null);
     setUploadProgress(0);
     setFormError('');
@@ -179,16 +179,16 @@ export const Logistics = () => {
       return true;
     }
     if (step === 3) {
-      const amtVal = parseFloat(rateValue);
-      if (isNaN(amtVal) || amtVal <= 0) {
+      const amtVal = rateValue === '' ? 0 : parseFloat(rateValue);
+      if (isNaN(amtVal) || amtVal < 0) {
         setFormError('Please enter a valid Fixed Amount.');
         return false;
       }
       return true;
     }
     if (step === 4) {
-      const rateVal = parseFloat(rateValue);
-      if (isNaN(rateVal) || rateVal <= 0) {
+      const rateVal = rateValue === '' ? 0 : parseFloat(rateValue);
+      if (isNaN(rateVal) || rateVal < 0) {
         setFormError('Please enter a valid Per MT Rate.');
         return false;
       }
@@ -207,7 +207,7 @@ export const Logistics = () => {
         submitLogistics();
         return;
       }
-      setRateValue('');
+      if (rateValue === '') setRateValue('0');
       if (rateType === 'Fixed') {
         setCurrentStep(3);
       } else {
@@ -746,6 +746,7 @@ export const Logistics = () => {
                 <Input
                   label="Fixed Amount *"
                   type="number"
+                  min="0"
                   value={rateValue}
                   onChange={(e) => setRateValue(e.target.value)}
                   placeholder="e.g. 15000"
@@ -782,6 +783,7 @@ export const Logistics = () => {
                 <Input
                   label="Per Mt Rate *"
                   type="number"
+                  min="0"
                   value={rateValue}
                   onChange={(e) => setRateValue(e.target.value)}
                   placeholder="e.g. 350"
