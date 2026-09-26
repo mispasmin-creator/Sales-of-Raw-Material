@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS parties (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL UNIQUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE
 );
 
 -- ==========================================
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS products (
     available_qty NUMERIC(15, 3) DEFAULT 0.000,
     unit VARCHAR(50) NOT NULL DEFAULT 'MT',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE
 );
 
 -- ==========================================
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS orders (
     po_copy_url TEXT,
     status VARCHAR(50) NOT NULL DEFAULT 'Pending Logistics' CHECK (status IN ('Pending Logistics', 'Pending Invoice', 'Completed')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE
 );
 
 -- ==========================================
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS logistics (
     rate_value NUMERIC(15, 2) NOT NULL CHECK (rate_value >= 0),
     freight_amount NUMERIC(15, 2) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE
 );
 
 -- ==========================================
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     invoice_no VARCHAR(100) NOT NULL UNIQUE,
     invoice_copy_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE
 );
 
 -- ==========================================
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS inventory (
     available_qty NUMERIC(15, 3) NOT NULL DEFAULT 0.000,
     sold_qty NUMERIC(15, 3) NOT NULL DEFAULT 0.000,
     remaining_qty NUMERIC(15, 3) GENERATED ALWAYS AS (available_qty - sold_qty) STORED,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE
 );
 
 -- ==========================================
@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(255) NOT NULL,
     firm_name VARCHAR(255) DEFAULT '',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Allow multiple comma-separated Page Access values on existing databases.

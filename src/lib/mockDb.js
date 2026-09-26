@@ -296,7 +296,7 @@ export const mockDb = {
       po_copy_url: orderData.po_copy_url || '',
       status: 'Pending Logistics',
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      updated_at: null,
       stock_warned: isStockWarning
     };
 
@@ -364,7 +364,7 @@ export const mockDb = {
       freight_amount: freightAmount,
       description: logisticsData.description || '',
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: null
     };
 
     logistics.push(newLogistics);
@@ -434,7 +434,7 @@ export const mockDb = {
       invoice_no: invoiceData.invoice_no,
       invoice_copy_url: invoiceData.invoice_copy_url || '',
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: null
     };
 
     invoices.push(newInvoice);

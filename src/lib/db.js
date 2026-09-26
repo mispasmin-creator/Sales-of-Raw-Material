@@ -614,7 +614,7 @@ class DatabaseService {
                 po_copy_url: row["PO Copy"] || "",
                 status: status,
                 created_at: row["Timestamp"] || new Date().toISOString(),
-                updated_at: row["Timestamp"] || new Date().toISOString()
+                updated_at: null
               };
             });
 
