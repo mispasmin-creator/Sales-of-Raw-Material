@@ -57,6 +57,15 @@ export const DocumentViewer = () => {
   };
 
   const handleDownload = () => {
+    if (docViewer.fileUrl && (docViewer.fileUrl.startsWith('data:') || docViewer.fileUrl.startsWith('http'))) {
+      const element = document.createElement("a");
+      element.href = docViewer.fileUrl;
+      element.download = docViewer.fileName || `${docViewer.fileType}-${docViewer.orderNo}`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+      return;
+    }
     // Simulate downloading by generating a text file representing the mock doc
     const element = document.createElement("a");
     const file = new Blob([`FMS Document Details\nOrder Number: ${docViewer.orderNo}\nFile: ${docViewer.fileName}\nType: ${docViewer.fileType}`], {type: 'text/plain'});
@@ -77,6 +86,33 @@ export const DocumentViewer = () => {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
           <span className="ml-2 font-semibold">Loading document details...</span>
+        </div>
+      );
+    }
+
+    // If an actual uploaded image exists
+    const isImageFile = docViewer.fileUrl && (
+      docViewer.fileUrl.startsWith('data:image/') ||
+      /\.(jpeg|jpg|png|webp|gif|svg)($|\?)/i.test(docViewer.fileUrl)
+    );
+
+    if (isImageFile) {
+      return (
+        <div className="bg-white p-6 shadow-md rounded-lg border border-slate-200 flex flex-col items-center max-w-full">
+          <div className="flex justify-between items-center w-full border-b pb-3 mb-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">{docViewer.fileType} Document Scan Copy</h2>
+              <p className="text-[10px] text-slate-500">Order Ref: {docViewer.orderNo} | File: {docViewer.fileName}</p>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Uploaded Copy
+            </span>
+          </div>
+          <img 
+            src={docViewer.fileUrl} 
+            alt={docViewer.fileName || "Uploaded Document"} 
+            className="max-w-full h-auto rounded-lg object-contain shadow-sm max-h-[75vh]"
+          />
         </div>
       );
     }

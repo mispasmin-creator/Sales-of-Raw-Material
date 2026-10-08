@@ -21,6 +21,7 @@ export const Invoices = () => {
   const { addNotification, openDocument, userRole, currentUser } = useApp();
   const [orders, setOrders] = useState([]);
   const [logisticsList, setLogisticsList] = useState([]);
+  const [invoicesList, setInvoicesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSubTab, setActiveSubTab] = useState('active'); // 'active' | 'history'
@@ -45,15 +46,17 @@ export const Invoices = () => {
   const fetchOrdersPendingInvoice = async () => {
     try {
       setLoading(true);
-      const [orderList, logsList] = await Promise.all([
+      const [orderList, logsList, invList] = await Promise.all([
         db.getOrders(),
-        db.getLogistics()
+        db.getLogistics(),
+        db.getInvoices()
       ]);
       // Filter only orders that are dispatched or completed
       const dispatched = filterByFirmAccess(orderList, currentUser)
         .filter(o => o.status === 'Pending Invoice' || o.status === 'Completed');
       setOrders(dispatched);
       setLogisticsList(logsList || []);
+      setInvoicesList(invList || []);
     } catch (e) {
       console.error("Failed to load invoice pending orders", e);
     } finally {
@@ -63,11 +66,7 @@ export const Invoices = () => {
 
   const handleOpenInvoiceForm = (order) => {
     setSelectedOrder(order);
-    
-    // Auto generate suggestion for invoice number
-    const countNum = Math.floor(Math.random() * 9000) + 1000;
-    setInvoiceNo(`INV-${new Date().getFullYear()}-${countNum}`);
-    
+    setInvoiceNo('');
     setUploadedInvoice(null);
     setUploadProgress(0);
     setFormError('');
@@ -117,7 +116,7 @@ export const Invoices = () => {
     const invoiceData = {
       order_id: selectedOrder.id,
       invoice_no: invoiceNo.trim(),
-      invoice_copy_url: uploadedInvoice.name,
+      invoice_copy_url: uploadedInvoice.base64 ? `data:${uploadedInvoice.type || 'image/png'};base64,${uploadedInvoice.base64}` : uploadedInvoice.name,
       invoice_file_base64: uploadedInvoice.base64,
       invoice_file_name: uploadedInvoice.name,
       invoice_file_type: uploadedInvoice.type
@@ -149,13 +148,15 @@ export const Invoices = () => {
     .filter(o => {
       const q = searchQuery.toLowerCase();
       const log = logisticsList.find(l => l.order_id === o.id || l.order_no === o.order_no);
+      const inv = invoicesList.find(i => i.order_id === o.id || i.order_no === o.order_no);
       return (
         o.order_no.toLowerCase().includes(q) ||
         o.party_name.toLowerCase().includes(q) ||
         o.product_name.toLowerCase().includes(q) ||
         (log?.transporter_name && log.transporter_name.toLowerCase().includes(q)) ||
         (log?.truck_no && log.truck_no.toLowerCase().includes(q)) ||
-        (log?.bilty_no && log.bilty_no.toLowerCase().includes(q))
+        (log?.bilty_no && log.bilty_no.toLowerCase().includes(q)) ||
+        (inv?.invoice_no && inv.invoice_no.toLowerCase().includes(q))
       );
     });
 
@@ -245,6 +246,12 @@ export const Invoices = () => {
                   <th className="p-4">Truck No.</th>
                   <th className="p-4">Bilty No.</th>
                   <th className="p-4">Bilty Copy</th>
+                  {activeSubTab === 'history' && (
+                    <>
+                      <th className="p-4">Invoice No.</th>
+                      <th className="p-4">Invoice Copy</th>
+                    </>
+                  )}
                   <th className="p-4 text-center">Status</th>
                   <th className="p-4 text-center">Action</th>
                 </tr>
@@ -252,7 +259,7 @@ export const Invoices = () => {
               <tbody className="text-xs divide-y divide-slate-50 dark:divide-slate-navy-900">
                 {filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan="15" className="p-8 text-center text-slate-navy-400">
+                    <td colSpan={activeSubTab === 'history' ? 17 : 15} className="p-8 text-center text-slate-navy-400">
                       {activeSubTab === 'active'
                         ? "Zero orders are pending invoicing. Accounts ledger matches dispatches."
                         : "No invoice history entries found."}
@@ -261,6 +268,7 @@ export const Invoices = () => {
                 ) : (
                   filteredOrders.map(order => {
                     const log = logisticsList.find(l => l.order_id === order.id || l.order_no === order.order_no);
+                    const inv = invoicesList.find(i => i.order_id === order.id || i.order_no === order.order_no);
                     return (
                       <tr key={order.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-navy-900/30">
                         <td className="p-4 font-bold text-brand-650 dark:text-brand-400">{order.order_no}</td>
@@ -315,6 +323,26 @@ export const Invoices = () => {
                             </button>
                           ) : '-'}
                         </td>
+                        {activeSubTab === 'history' && (
+                          <>
+                            <td className="p-4 font-bold text-brand-650 dark:text-brand-400">
+                              {inv?.invoice_no || '-'}
+                            </td>
+                            <td className="p-4">
+                              {inv?.invoice_copy_url ? (
+                                <button 
+                                  type="button"
+                                  onClick={() => openDocument(inv.invoice_copy_url, `Invoice-${inv.invoice_no || order.order_no}.pdf`, 'Invoice', order.order_no)}
+                                  className="inline-flex items-center gap-1 font-semibold text-brand-650 hover:text-brand-700 bg-brand-50 hover:bg-brand-100/80 dark:bg-brand-950/40 dark:hover:bg-brand-900/60 px-2.5 py-1 rounded-md text-xs transition-colors"
+                                  title={inv.invoice_copy_url}
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  <span>View</span>
+                                </button>
+                              ) : '-'}
+                            </td>
+                          </>
+                        )}
                         <td className="p-4 text-center">
                           <span className={cn(
                             "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase",

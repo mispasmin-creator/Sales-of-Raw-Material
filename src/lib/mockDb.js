@@ -432,7 +432,9 @@ export const mockDb = {
       order_id: invoiceData.order_id,
       order_no: order.order_no,
       invoice_no: invoiceData.invoice_no,
-      invoice_copy_url: invoiceData.invoice_copy_url || '',
+      invoice_copy_url: invoiceData.invoice_file_base64
+        ? `data:${invoiceData.invoice_file_type || 'image/png'};base64,${invoiceData.invoice_file_base64}`
+        : (invoiceData.invoice_copy_url || ''),
       created_at: new Date().toISOString(),
       updated_at: null
     };
