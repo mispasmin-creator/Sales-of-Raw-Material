@@ -303,6 +303,9 @@ export const SaleOrders = () => {
   // Auto amount math
   const calculatedAmount = (parseFloat(formQty) || 0) * (parseFloat(formRate) || 0);
 
+  const pendingCount = orders.filter(o => o.status === 'Pending Approval').length;
+  const historyCount = orders.filter(o => o.status !== 'Pending Approval').length;
+
   return (
     <div className="space-y-6 animate-fade-in">
       
@@ -339,6 +342,7 @@ export const SaleOrders = () => {
           />
         </div>
 
+<<<<<<< HEAD
         <select
           value={firmFilter}
           onChange={(e) => setFirmFilter(e.target.value)}
@@ -387,6 +391,21 @@ export const SaleOrders = () => {
             Wipe Saved Draft
           </Button>
         )}
+=======
+        <div className="flex items-center gap-3">
+          <span className="text-xs bg-brand-50 text-brand-700 px-3 py-1.5 rounded-lg border border-brand-100 font-bold dark:bg-brand-950/20">
+            {activeSubTab === 'active' ? 'Pending Approval' : 'Approved / History'}: {filteredOrders.length}
+          </span>
+
+          {/* Clear draft action helper if draft is saved */}
+          {localStorage.getItem('fms_sale_order_draft') && (
+            <Button variant="ghost" size="sm" onClick={clearDraft} className="text-xs gap-1 text-slate-navy-400 hover:text-slate-navy-650">
+              <RotateCcw className="h-3.5 w-3.5" />
+              Wipe Saved Draft
+            </Button>
+          )}
+        </div>
+>>>>>>> d767691753845cbc21bc63236a08c1c337e0d426
       </div>
 
       {/* Tab Navigation */}
@@ -394,24 +413,40 @@ export const SaleOrders = () => {
         <button
           onClick={() => setActiveSubTab('active')}
           className={cn(
-            "pb-3 text-xs font-bold border-b-2 px-4 transition-all duration-150 focus:outline-none",
+            "pb-3 text-xs font-bold border-b-2 px-4 transition-all duration-150 focus:outline-none flex items-center gap-2",
             activeSubTab === 'active'
               ? "border-brand-500 text-brand-600 dark:text-brand-400"
               : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
           )}
         >
-          Active Orders
+          <span>Pending Orders</span>
+          <span className={cn(
+            "px-2 py-0.5 rounded-full text-[11px] font-semibold transition-colors",
+            activeSubTab === 'active'
+              ? "bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 border border-brand-200/50 dark:border-brand-800/50"
+              : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+          )}>
+            {pendingCount}
+          </span>
         </button>
         <button
           onClick={() => setActiveSubTab('history')}
           className={cn(
-            "pb-3 text-xs font-bold border-b-2 px-4 transition-all duration-150 focus:outline-none",
+            "pb-3 text-xs font-bold border-b-2 px-4 transition-all duration-150 focus:outline-none flex items-center gap-2",
             activeSubTab === 'history'
               ? "border-brand-500 text-brand-600 dark:text-brand-400"
               : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
           )}
         >
-          History
+          <span>History</span>
+          <span className={cn(
+            "px-2 py-0.5 rounded-full text-[11px] font-semibold transition-colors",
+            activeSubTab === 'history'
+              ? "bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 border border-brand-200/50 dark:border-brand-800/50"
+              : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+          )}>
+            {historyCount}
+          </span>
         </button>
       </div>
 

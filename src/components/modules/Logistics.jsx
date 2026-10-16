@@ -307,6 +307,9 @@ export const Logistics = () => {
       );
     });
 
+  const pendingCount = orders.filter(o => o.status === 'Pending Logistics').length;
+  const historyCount = orders.filter(o => o.status === 'Pending Invoice' || o.status === 'Completed').length;
+
   return (
     <div className="space-y-6 animate-fade-in">
       
@@ -354,24 +357,40 @@ export const Logistics = () => {
         <button
           onClick={() => setActiveSubTab('active')}
           className={cn(
-            "pb-3 text-xs font-bold border-b-2 px-4 transition-all duration-150 focus:outline-none",
+            "pb-3 text-xs font-bold border-b-2 px-4 transition-all duration-150 focus:outline-none flex items-center gap-2",
             activeSubTab === 'active'
               ? "border-brand-500 text-brand-600 dark:text-brand-400"
               : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
           )}
         >
-          Active Logistics
+          <span>Pending Logistics</span>
+          <span className={cn(
+            "px-2 py-0.5 rounded-full text-[11px] font-semibold transition-colors",
+            activeSubTab === 'active'
+              ? "bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 border border-brand-200/50 dark:border-brand-800/50"
+              : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+          )}>
+            {pendingCount}
+          </span>
         </button>
         <button
           onClick={() => setActiveSubTab('history')}
           className={cn(
-            "pb-3 text-xs font-bold border-b-2 px-4 transition-all duration-150 focus:outline-none",
+            "pb-3 text-xs font-bold border-b-2 px-4 transition-all duration-150 focus:outline-none flex items-center gap-2",
             activeSubTab === 'history'
               ? "border-brand-500 text-brand-600 dark:text-brand-400"
               : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
           )}
         >
-          History
+          <span>History</span>
+          <span className={cn(
+            "px-2 py-0.5 rounded-full text-[11px] font-semibold transition-colors",
+            activeSubTab === 'history'
+              ? "bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 border border-brand-200/50 dark:border-brand-800/50"
+              : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+          )}>
+            {historyCount}
+          </span>
         </button>
       </div>
 
