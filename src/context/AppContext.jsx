@@ -222,6 +222,23 @@ export const AppProvider = ({ children }) => {
   };
 
   const openDocument = (fileUrl, fileName, fileType, orderNo) => {
+    // Real uploaded files open in a new browser tab instead of the in-app viewer
+    if (fileUrl && fileUrl.startsWith('http')) {
+      window.open(fileUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    if (fileUrl && fileUrl.startsWith('data:')) {
+      // Browsers block navigating to data: URLs, so convert to a blob URL first
+      try {
+        const [header, b64] = fileUrl.split(',');
+        const mime = header.match(/data:([^;]+)/)?.[1] || 'application/octet-stream';
+        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        window.open(URL.createObjectURL(new Blob([bytes], { type: mime })), '_blank');
+        return;
+      } catch (e) {
+        console.error('Failed to open document in new tab', e);
+      }
+    }
     setDocViewer({
       open: true,
       fileUrl,

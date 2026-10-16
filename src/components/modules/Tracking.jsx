@@ -24,6 +24,10 @@ export const Tracking = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [logisticsDetails, setLogisticsDetails] = useState(null);
   const [invoiceDetails, setInvoiceDetails] = useState(null);
+  const [firmFilter, setFirmFilter] = useState('');
+
+  const firmOptions = Array.from(new Set(orders.map(o => o.firm_name).filter(Boolean))).sort();
+  const visibleOrders = firmFilter ? orders.filter(o => o.firm_name === firmFilter) : orders;
 
   useEffect(() => {
     loadOrders();
@@ -138,9 +142,18 @@ export const Tracking = () => {
             <span className="text-xs font-bold text-slate-navy-400 uppercase tracking-wide">
               Select Active Contract
             </span>
-            
+
+            <select
+              value={firmFilter}
+              onChange={(e) => setFirmFilter(e.target.value)}
+              className="w-full py-1.5 px-3 rounded-lg border border-slate-navy-200 bg-white text-xs text-slate-navy-900 focus:border-brand-500 focus:outline-none dark:border-slate-navy-800 dark:bg-slate-navy-900 dark:text-slate-navy-100"
+            >
+              <option value="">All Firms</option>
+              {firmOptions.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+
             <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
-              {orders.map(o => (
+              {visibleOrders.map(o => (
                 <button
                   key={o.id}
                   onClick={() => handleSelectOrder(o)}

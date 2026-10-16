@@ -117,7 +117,33 @@ export const DocumentViewer = () => {
       );
     }
 
-    const formattedDate = orderDetail?.dispatch_date 
+    // Any other real uploaded file (PDF etc.) — show it in an embedded viewer
+    const hasRealFile = docViewer.fileUrl && (
+      docViewer.fileUrl.startsWith('data:') || docViewer.fileUrl.startsWith('http')
+    );
+
+    if (hasRealFile) {
+      return (
+        <div className="bg-white p-6 shadow-md rounded-lg border border-slate-200 flex flex-col w-full">
+          <div className="flex justify-between items-center w-full border-b pb-3 mb-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">{docViewer.fileType} Uploaded Copy</h2>
+              <p className="text-[10px] text-slate-500">Order Ref: {docViewer.orderNo}</p>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Uploaded Copy
+            </span>
+          </div>
+          <iframe
+            src={docViewer.fileUrl.replace(/(drive\.google\.com\/file\/d\/[^/]+)\/(view|edit)[^\s]*/, '$1/preview')}
+            title={docViewer.fileName || 'Uploaded Document'}
+            className="w-full h-[75vh] rounded border border-slate-200"
+          />
+        </div>
+      );
+    }
+
+    const formattedDate = orderDetail?.dispatch_date
       ? new Date(orderDetail.dispatch_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
       : "June 15, 2026";
 

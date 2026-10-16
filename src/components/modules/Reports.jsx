@@ -38,6 +38,7 @@ export const Reports = () => {
   const [filterParty, setFilterParty] = useState('');
   const [filterProduct, setFilterProduct] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterFirm, setFilterFirm] = useState('');
 
   useEffect(() => {
     loadData();
@@ -72,6 +73,7 @@ export const Reports = () => {
     setFilterParty('');
     setFilterProduct('');
     setFilterStatus('');
+    setFilterFirm('');
   };
 
   // Helper: check date bounds
@@ -96,6 +98,7 @@ export const Reports = () => {
   // --- Filtering Logic ---
   const getFilteredSales = () => {
     return orders.filter(o => {
+      if (filterFirm && o.firm_name !== filterFirm) return false;
       if (filterParty && o.party_id !== filterParty) return false;
       if (filterProduct && o.product_id !== filterProduct) return false;
       if (filterStatus && o.status !== filterStatus) return false;
@@ -109,6 +112,7 @@ export const Reports = () => {
       // Find corresponding order to check filters
       const ord = orders.find(o => o.id === l.order_id);
       if (!ord) return false;
+      if (filterFirm && ord.firm_name !== filterFirm) return false;
       if (filterParty && ord.party_id !== filterParty) return false;
       if (filterProduct && ord.product_id !== filterProduct) return false;
       if ((filterStartDate || filterEndDate) && !checkDateInBounds(l.created_at, filterStartDate, filterEndDate)) return false;
@@ -120,6 +124,7 @@ export const Reports = () => {
     return invoices.filter(inv => {
       const ord = orders.find(o => o.id === inv.order_id);
       if (!ord) return false;
+      if (filterFirm && ord.firm_name !== filterFirm) return false;
       if (filterParty && ord.party_id !== filterParty) return false;
       if (filterProduct && ord.product_id !== filterProduct) return false;
       if ((filterStartDate || filterEndDate) && !checkDateInBounds(inv.created_at, filterStartDate, filterEndDate)) return false;
@@ -130,6 +135,7 @@ export const Reports = () => {
   const getFilteredDelays = () => {
     // Show orders that have logistics or invoices registered to check delay
     return orders.filter(o => {
+      if (filterFirm && o.firm_name !== filterFirm) return false;
       if (filterParty && o.party_id !== filterParty) return false;
       if (filterProduct && o.product_id !== filterProduct) return false;
       if ((filterStartDate || filterEndDate) && !checkDateInBounds(o.created_at, filterStartDate, filterEndDate)) return false;
@@ -153,6 +159,7 @@ export const Reports = () => {
     });
 
     const filtered = orders.filter(o => {
+      if (filterFirm && o.firm_name !== filterFirm) return false;
       if (filterParty && o.party_id !== filterParty) return false;
       if (filterProduct && o.product_id !== filterProduct) return false;
       if ((filterStartDate || filterEndDate) && !checkDateInBounds(o.created_at, filterStartDate, filterEndDate)) return false;
@@ -275,7 +282,7 @@ export const Reports = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-6">
           <Input
             label="From Date"
             type="date"
@@ -289,6 +296,15 @@ export const Reports = () => {
             onChange={(e) => setFilterEndDate(e.target.value)}
           />
           
+          <Select
+            label="Firm Name"
+            value={filterFirm}
+            onChange={(e) => setFilterFirm(e.target.value)}
+          >
+            <option value="">-- All Firms --</option>
+            {Array.from(new Set(orders.map(o => o.firm_name).filter(Boolean))).sort().map(f => <option key={f} value={f}>{f}</option>)}
+          </Select>
+
           <Select
             label="Party Name"
             value={filterParty}

@@ -24,6 +24,7 @@ export const Invoices = () => {
   const [invoicesList, setInvoicesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [firmFilter, setFirmFilter] = useState('');
   const [activeSubTab, setActiveSubTab] = useState('active'); // 'active' | 'history'
 
   // Invoice creation state
@@ -139,12 +140,14 @@ export const Invoices = () => {
   };
 
   // Filters
+  const firmOptions = Array.from(new Set(orders.map(o => o.firm_name).filter(Boolean))).sort();
   const filteredOrders = orders
     .filter(o => 
       activeSubTab === 'active' 
         ? o.status === 'Pending Invoice' 
         : o.status === 'Completed'
     )
+    .filter(o => !firmFilter || o.firm_name === firmFilter)
     .filter(o => {
       const q = searchQuery.toLowerCase();
       const log = logisticsList.find(l => l.order_id === o.id || l.order_no === o.order_no);
@@ -187,7 +190,16 @@ export const Invoices = () => {
             className="pl-9 pr-4 py-1.5 w-full rounded-lg border border-slate-navy-200 bg-white text-xs text-slate-navy-900 focus:border-brand-500 focus:outline-none dark:border-slate-navy-800 dark:bg-slate-navy-900 dark:text-slate-navy-100"
           />
         </div>
-        
+
+        <select
+          value={firmFilter}
+          onChange={(e) => setFirmFilter(e.target.value)}
+          className="ml-3 mr-auto py-1.5 px-3 rounded-lg border border-slate-navy-200 bg-white text-xs text-slate-navy-900 focus:border-brand-500 focus:outline-none dark:border-slate-navy-800 dark:bg-slate-navy-900 dark:text-slate-navy-100"
+        >
+          <option value="">All Firms</option>
+          {firmOptions.map(f => <option key={f} value={f}>{f}</option>)}
+        </select>
+
         <span className="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-100 font-bold dark:bg-emerald-950/20">
           {activeSubTab === 'active' ? 'Ready for Invoicing' : 'Fully Invoiced'}: {filteredOrders.length}
         </span>

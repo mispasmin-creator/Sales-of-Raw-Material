@@ -30,6 +30,9 @@ export const SaleOrders = () => {
   
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [firmFilter, setFirmFilter] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   
   // Modals state
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -281,12 +284,21 @@ export const SaleOrders = () => {
         ? o.status === 'Pending Approval' 
         : o.status !== 'Pending Approval'
     )
-    .filter(o => 
+    .filter(o => !firmFilter || o.firm_name === firmFilter)
+    .filter(o => {
+      if (!fromDate && !toDate) return true;
+      const d = (o.dispatch_date || '').toString().slice(0, 10);
+      if (!d) return false;
+      return (!fromDate || d >= fromDate) && (!toDate || d <= toDate);
+    })
+    .filter(o =>
       o.order_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
       o.party_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       o.product_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       o.status.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+  const totalFilteredQty = filteredOrders.reduce((sum, o) => sum + (parseFloat(o.qty) || 0), 0);
 
   // Auto amount math
   const calculatedAmount = (parseFloat(formQty) || 0) * (parseFloat(formRate) || 0);
@@ -315,7 +327,7 @@ export const SaleOrders = () => {
       </div>
 
       {/* Filter and Search */}
-      <div className="flex justify-between items-center bg-white border border-slate-100 rounded-xl p-4.5 shadow-xs dark:bg-slate-navy-950 dark:border-slate-navy-900">
+      <div className="flex flex-wrap gap-y-3 justify-between items-center bg-white border border-slate-100 rounded-xl p-4.5 shadow-xs dark:bg-slate-navy-950 dark:border-slate-navy-900">
         <div className="relative w-72">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-navy-400" />
           <input
@@ -326,6 +338,47 @@ export const SaleOrders = () => {
             className="pl-9 pr-4 py-1.5 w-full rounded-lg border border-slate-navy-200 bg-white text-xs text-slate-navy-900 focus:border-brand-500 focus:outline-none dark:border-slate-navy-800 dark:bg-slate-navy-900 dark:text-slate-navy-100"
           />
         </div>
+
+        <select
+          value={firmFilter}
+          onChange={(e) => setFirmFilter(e.target.value)}
+          className="ml-3 mr-3 py-1.5 px-3 rounded-lg border border-slate-navy-200 bg-white text-xs text-slate-navy-900 focus:border-brand-500 focus:outline-none dark:border-slate-navy-800 dark:bg-slate-navy-900 dark:text-slate-navy-100"
+        >
+          <option value="">All Firms</option>
+          {firms.map(f => <option key={f} value={f}>{f}</option>)}
+        </select>
+
+        <div className="flex items-center gap-2 mr-auto text-xs text-slate-navy-500">
+          <span className="font-semibold">Dispatch</span>
+          <input
+            type="date"
+            value={fromDate}
+            max={toDate || undefined}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="py-1.5 px-2 rounded-lg border border-slate-navy-200 bg-white text-xs text-slate-navy-900 focus:border-brand-500 focus:outline-none dark:border-slate-navy-800 dark:bg-slate-navy-900 dark:text-slate-navy-100"
+          />
+          <span>to</span>
+          <input
+            type="date"
+            value={toDate}
+            min={fromDate || undefined}
+            onChange={(e) => setToDate(e.target.value)}
+            className="py-1.5 px-2 rounded-lg border border-slate-navy-200 bg-white text-xs text-slate-navy-900 focus:border-brand-500 focus:outline-none dark:border-slate-navy-800 dark:bg-slate-navy-900 dark:text-slate-navy-100"
+          />
+          {(fromDate || toDate) && (
+            <button
+              type="button"
+              onClick={() => { setFromDate(''); setToDate(''); }}
+              className="font-bold text-brand-650 hover:underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        <span className="text-xs bg-brand-50 text-brand-700 px-3 py-1.5 rounded-lg border border-brand-100 font-bold dark:bg-brand-950/20">
+          Total Qty: {formatNumber(totalFilteredQty, 3)} MT
+        </span>
 
         {/* Clear draft action helper if draft is saved */}
         {localStorage.getItem('fms_sale_order_draft') && (

@@ -793,15 +793,96 @@ class DatabaseService {
     return { order_no: orderNo, status: newStatus };
   }
 
+  // --- Google Sheet records (logistics / invoices live in the sheet, not only in this browser) ---
+  async fetchSheetRows() {
+    const url = import.meta.env.VITE_APPSCRIPT_URL;
+    if (!url || url === 'YOUR_APPSCRIPT_URL' || url === '') return [];
+    // De-duplicate concurrent calls (getOrders -> getLogistics/getInvoices)
+    if (this._sheetRowsPromise && Date.now() - this._sheetRowsAt < 5000) {
+      return this._sheetRowsPromise;
+    }
+    this._sheetRowsAt = Date.now();
+    this._sheetRowsPromise = fetch(url)
+      .then(r => r.json())
+      .then(result => (result && result.status === 'success' && Array.isArray(result.data)) ? result.data : [])
+      .catch(e => {
+        console.error("Database Service: Failed to fetch sheet rows", e);
+        this._sheetRowsPromise = null;
+        return [];
+      });
+    return this._sheetRowsPromise;
+  }
+
+  // Case/punctuation-insensitive column lookup ("Invoice No." == "invoice no")
+  sheetCell(row, name) {
+    const norm = s => s.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const target = norm(name);
+    // Exact match first: "Actual" (dispatch) and "Actual." (invoice) differ only by the dot
+    let key = Object.keys(row).find(k => k.toString().trim() === name);
+    if (key === undefined && target !== 'actual') {
+      key = Object.keys(row).find(k => norm(k) === target);
+    }
+    const val = key !== undefined ? row[key] : '';
+    return val === null || val === undefined ? '' : val.toString().trim();
+  }
+
+  // Add sheet-derived records for orders that have no local record yet
+  mergeSheetRecords(localList, sheetRows, build) {
+    const merged = [...(localList || [])];
+    sheetRows.forEach(row => {
+      const orderNo = this.sheetCell(row, 'Order No.');
+      if (!orderNo.toUpperCase().startsWith('RM')) return;
+      const rec = build(row, orderNo);
+      if (!rec) return;
+      const existing = merged.find(r => r.order_no === orderNo || r.order_id === rec.order_id);
+      if (!existing) {
+        merged.push(rec);
+      } else {
+        // Fill missing fields (e.g. copy url) from the sheet
+        Object.keys(rec).forEach(k => {
+          if (!existing[k] && rec[k]) existing[k] = rec[k];
+        });
+      }
+    });
+    return merged;
+  }
+
   // --- Logistics ---
   async getLogistics() {
     await this.delay();
+    let list;
     if (this.useSupabase) {
       const { data, error } = await this.supabase.from('logistics').select('*');
       if (error) throw error;
-      return data;
+      list = data;
+    } else {
+      list = mockDb.getLogistics();
     }
-    return mockDb.getLogistics();
+
+    const sheetRows = await this.fetchSheetRows();
+    if (sheetRows.length === 0) return list;
+    return this.mergeSheetRecords(list, sheetRows, (row, orderNo) => {
+      const actual = this.sheetCell(row, 'Actual');
+      if (!actual) return null;
+      const rateType = this.sheetCell(row, 'Type Of Rate');
+      const fixed = parseFloat(this.sheetCell(row, 'Fixed Amount')) || 0;
+      const perMt = parseFloat(this.sheetCell(row, 'Per Mt Rate')) || 0;
+      const qty = parseFloat(this.sheetCell(row, 'Actual Truck Qty')) || 0;
+      return {
+        id: `l_sheet_${orderNo}`,
+        order_id: `order_${orderNo}`,
+        order_no: orderNo,
+        transporter_name: this.sheetCell(row, 'Transporter Name'),
+        truck_no: this.sheetCell(row, 'Truck No.'),
+        bilty_no: this.sheetCell(row, 'Bilty No.'),
+        actual_truck_qty: qty,
+        bilty_copy_url: this.sheetCell(row, 'Bilty Copy'),
+        rate_type: rateType,
+        rate_value: rateType === 'Fixed' ? fixed : perMt,
+        freight_amount: rateType === 'Fixed' ? fixed : qty * perMt,
+        created_at: new Date(actual).toString() !== 'Invalid Date' ? new Date(actual).toISOString() : new Date().toISOString()
+      };
+    });
   }
 
   async saveLogistics(logisticsData, userRole) {
@@ -892,12 +973,30 @@ class DatabaseService {
   // --- Invoices ---
   async getInvoices() {
     await this.delay();
+    let list;
     if (this.useSupabase) {
       const { data, error } = await this.supabase.from('invoices').select('*');
       if (error) throw error;
-      return data;
+      list = data;
+    } else {
+      list = mockDb.getInvoices();
     }
-    return mockDb.getInvoices();
+
+    const sheetRows = await this.fetchSheetRows();
+    if (sheetRows.length === 0) return list;
+    return this.mergeSheetRecords(list, sheetRows, (row, orderNo) => {
+      const invoiceNo = this.sheetCell(row, 'Invoice No.');
+      if (!invoiceNo) return null;
+      const actual = this.sheetCell(row, 'Actual.');
+      return {
+        id: `i_sheet_${orderNo}`,
+        order_id: `order_${orderNo}`,
+        order_no: orderNo,
+        invoice_no: invoiceNo,
+        invoice_copy_url: this.sheetCell(row, 'Invoice Copy'),
+        created_at: actual && new Date(actual).toString() !== 'Invalid Date' ? new Date(actual).toISOString() : new Date().toISOString()
+      };
+    });
   }
 
   async saveInvoice(invoiceData, userRole) {

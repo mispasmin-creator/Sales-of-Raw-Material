@@ -49,9 +49,12 @@ export const Dashboard = () => {
 
   const [activities, setActivities] = useState([]);
 
+  const [firmFilter, setFirmFilter] = useState('');
+  const [firmOptions, setFirmOptions] = useState([]);
+
   useEffect(() => {
     loadDashboardData();
-  }, [currentUser]);
+  }, [currentUser, firmFilter]);
 
   const loadDashboardData = async () => {
     try {
@@ -62,7 +65,11 @@ export const Dashboard = () => {
         db.getLogs()
       ]);
 
-      const visibleOrders = filterByFirmAccess(orders, currentUser);
+      const accessibleOrders = filterByFirmAccess(orders, currentUser);
+      setFirmOptions(Array.from(new Set(accessibleOrders.map(o => o.firm_name).filter(Boolean))).sort());
+      const visibleOrders = firmFilter
+        ? accessibleOrders.filter(o => o.firm_name === firmFilter)
+        : accessibleOrders;
 
       // 1. Calculate KPI Metrics
       const totalOrders = visibleOrders.length;
@@ -184,14 +191,24 @@ export const Dashboard = () => {
             Real-time tracking of raw material dispatches, logistics, and billing pipelines.
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={loadDashboardData}
-          className="self-start md:self-auto gap-2"
-        >
-          <Activity className="h-4 w-4 text-brand-600 animate-pulse" />
-          Refresh Stats
-        </Button>
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          <select
+            value={firmFilter}
+            onChange={(e) => setFirmFilter(e.target.value)}
+            className="py-2 px-3 rounded-lg border border-slate-navy-200 bg-white text-xs text-slate-navy-900 focus:border-brand-500 focus:outline-none dark:border-slate-navy-800 dark:bg-slate-navy-900 dark:text-slate-navy-100"
+          >
+            <option value="">All Firms</option>
+            {firmOptions.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+          <Button
+            variant="outline"
+            onClick={loadDashboardData}
+            className="gap-2"
+          >
+            <Activity className="h-4 w-4 text-brand-600 animate-pulse" />
+            Refresh Stats
+          </Button>
+        </div>
       </div>
 
       {/* KPI Grid */}
