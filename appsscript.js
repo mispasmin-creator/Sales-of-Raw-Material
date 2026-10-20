@@ -275,6 +275,41 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
+    // ==========================================
+    // ACTION 4: CANCEL / UNDO CANCEL (AB to AD)
+    // ==========================================
+    else if (action === "CANCEL_ORDER") {
+      var orderNo = postData.order_no || "";
+      var rowIndex = orderNo ? findRowIndexByOrderNo(sheet, orderNo) : -1;
+      if (rowIndex === -1) {
+        return ContentService.createTextOutput(JSON.stringify({ 
+          status: "error", 
+          message: "Order not found in Sheet: " + orderNo 
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      // Make sure headers exist on Row 6 (AB, AC, AD)
+      var headerCells = sheet.getRange(6, 28, 1, 3);
+      if (!headerCells.getValues()[0][0]) {
+        headerCells.setValues([["Cancel Status", "Cancel Reason", "Cancelled By"]]);
+      }
+      
+      if (postData.cancel === false) {
+        sheet.getRange(rowIndex, 28, 1, 3).setValues([["", "", ""]]);
+      } else {
+        sheet.getRange(rowIndex, 28, 1, 3).setValues([[
+          "Cancelled",
+          postData.reason || "",
+          (postData.cancelled_by || "") + " @ " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MMM-yyyy HH:mm")
+        ]]);
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        message: "Order " + orderNo + (postData.cancel === false ? " cancellation undone." : " cancelled.")
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({ 
       status: "error", 

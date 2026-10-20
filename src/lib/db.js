@@ -598,9 +598,26 @@ class DatabaseService {
                 }
               }
 
+              // Cancellation: sheet is the source of truth; a fresh local action wins briefly
+              // (the sheet write is fire-and-forget, so it may lag a few seconds)
+              let cancelInfo = String(row["Cancel Status"] || '').trim().toLowerCase() === 'cancelled'
+                ? {
+                    cancelled: true,
+                    reason: row["Cancel Reason"] || "",
+                    by: row["Cancelled By"] || ""
+                  }
+                : null;
+              const localCancel = this.readLocalCancel(orderNo);
+              if (localCancel && Date.now() - localCancel.ts < 30000) {
+                cancelInfo = localCancel.cancelled ? localCancel : null;
+              }
+              if (cancelInfo) status = "Cancelled";
+
               return {
                 id: orderId,
                 order_no: orderNo,
+                cancel_reason: cancelInfo ? cancelInfo.reason || "" : "",
+                cancelled_by: cancelInfo ? cancelInfo.by || "" : "",
                 firm_name: row["Firm Name"] || "",
                 party_name: row["Party Name"] || "",
                 product_name: row["Product Name"] || "",
@@ -762,6 +779,78 @@ class DatabaseService {
     });
 
     return result;
+  }
+
+  readLocalCancel(orderNo) {
+    try {
+      return JSON.parse(localStorage.getItem('fms_cancel_' + orderNo) || 'null');
+    } catch {
+      return null;
+    }
+  }
+
+  // Cancel an order (only before dispatch). Pass cancel=false to undo (Admin only, enforced in UI).
+  async cancelOrder(orderNo, cancel, reason, userRole, userName) {
+    await this.delay();
+
+    const orders = await this.getOrders();
+    const order = orders.find(o => o.order_no === orderNo);
+    if (!order) throw new Error(`Order ${orderNo} not found.`);
+    if (cancel && order.status !== 'Pending Approval' && order.status !== 'Pending Logistics') {
+      throw new Error(`Order ${orderNo} is already ${order.status} and cannot be cancelled.`);
+    }
+    if (!cancel && order.status !== 'Cancelled') {
+      throw new Error(`Order ${orderNo} is not cancelled.`);
+    }
+
+    const by = userName || userRole || 'User';
+
+    if (this.useSupabase) {
+      const { error } = await this.supabase
+        .from('orders')
+        .update({
+          status: cancel ? 'Cancelled' : 'Pending Approval',
+          updated_at: new Date().toISOString()
+        })
+        .eq('order_no', orderNo);
+      if (error) throw error;
+    }
+
+    // Local record: authoritative in local mode, short-lived override in Google Sheet mode
+    if (cancel) {
+      localStorage.setItem('fms_cancel_' + orderNo, JSON.stringify({
+        cancelled: true, reason, by, at: new Date().toISOString(), ts: Date.now()
+      }));
+    } else if (import.meta.env.VITE_APPSCRIPT_URL) {
+      localStorage.setItem('fms_cancel_' + orderNo, JSON.stringify({ cancelled: false, ts: Date.now() }));
+    } else {
+      localStorage.removeItem('fms_cancel_' + orderNo);
+    }
+    if (!cancel) localStorage.removeItem('fms_approved_' + orderNo);
+
+    await this.addLog(userRole || 'Sales', cancel ? `Order ${orderNo} Cancelled` : `Order ${orderNo} Cancellation Undone`, {
+      order_no: orderNo,
+      reason: reason || '',
+      by
+    });
+
+    await this.syncCancelToGoogleSheet({ order_no: orderNo, cancel, reason, by });
+    return { order_no: orderNo, status: cancel ? 'Cancelled' : 'Pending Approval' };
+  }
+
+  async syncCancelToGoogleSheet({ order_no, cancel, reason, by }) {
+    const url = import.meta.env.VITE_APPSCRIPT_URL;
+    if (!url || url === 'YOUR_APPSCRIPT_URL' || url === '') return;
+    try {
+      await fetch(url, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "CANCEL_ORDER", order_no, cancel, reason: reason || "", cancelled_by: by || "" })
+      });
+    } catch (error) {
+      console.error("Error syncing cancellation to Google Sheet:", error);
+    }
   }
 
   async approveOrder(orderNo, approve, userRole) {

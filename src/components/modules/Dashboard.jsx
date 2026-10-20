@@ -67,9 +67,9 @@ export const Dashboard = () => {
 
       const accessibleOrders = filterByFirmAccess(orders, currentUser);
       setFirmOptions(Array.from(new Set(accessibleOrders.map(o => o.firm_name).filter(Boolean))).sort());
-      const visibleOrders = firmFilter
-        ? accessibleOrders.filter(o => o.firm_name === firmFilter)
-        : accessibleOrders;
+      const visibleOrders = accessibleOrders
+        .filter(o => o.status !== 'Cancelled')
+        .filter(o => !firmFilter || o.firm_name === firmFilter);
 
       // 1. Calculate KPI Metrics
       const totalOrders = visibleOrders.length;

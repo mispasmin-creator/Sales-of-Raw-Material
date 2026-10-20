@@ -36,7 +36,7 @@ export const Tracking = () => {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const list = await db.getOrders();
+      const list = (await db.getOrders()).filter(o => o.status !== 'Cancelled');
       setOrders(list);
 
       // Check if command palette requested a specific order preselection

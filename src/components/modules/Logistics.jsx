@@ -66,7 +66,7 @@ export const Logistics = () => {
       ]);
       // Filter only orders that are approved
       const approved = filterByFirmAccess(orderList, currentUser)
-        .filter(o => o.status !== 'Pending Approval');
+        .filter(o => o.status !== 'Pending Approval' && o.status !== 'Cancelled');
       setOrders(approved);
       setLogisticsList(logsList || []);
     } catch (e) {

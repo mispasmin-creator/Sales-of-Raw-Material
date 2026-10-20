@@ -239,9 +239,17 @@ export const mockDb = {
         }
       }
 
+      let cancel = null;
+      try {
+        cancel = JSON.parse(localStorage.getItem('fms_cancel_' + o.order_no) || 'null');
+      } catch { /* ignore corrupt entry */ }
+      if (cancel && cancel.cancelled) status = "Cancelled";
+
       return {
         ...o,
-        status
+        status,
+        cancel_reason: cancel && cancel.cancelled ? cancel.reason || '' : '',
+        cancelled_by: cancel && cancel.cancelled ? cancel.by || '' : ''
       };
     }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   },

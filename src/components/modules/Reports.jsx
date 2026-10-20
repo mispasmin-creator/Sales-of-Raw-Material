@@ -55,7 +55,7 @@ export const Reports = () => {
         db.getProducts()
       ]);
 
-      setOrders(orderList);
+      setOrders(orderList.filter(o => o.status !== 'Cancelled'));
       setLogistics(logsList);
       setInvoices(invsList);
       setParties(partyList);

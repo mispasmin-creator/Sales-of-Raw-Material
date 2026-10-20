@@ -31,6 +31,9 @@ export const SaleOrders = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [firmFilter, setFirmFilter] = useState('');
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelError, setCancelError] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   
@@ -112,6 +115,38 @@ export const SaleOrders = () => {
       console.error("Failed to toggle order approval", e);
       addNotification('Approval Error', e.message || 'Failed to update order status.', 'error');
     }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelReason.trim()) return setCancelError('Please enter a reason for cancelling.');
+    try {
+      await db.cancelOrder(cancelTarget.order_no, true, cancelReason.trim(), userRole, currentUser?.user_name);
+      addNotification('Order Cancelled', `Sale Order ${cancelTarget.order_no} has been cancelled.`, 'info');
+      setCancelTarget(null);
+      setCancelReason('');
+      setCancelError('');
+      await fetchOrdersAndMasters();
+    } catch (e) {
+      console.error("Failed to cancel order", e);
+      setCancelError(e.message || 'Failed to cancel order.');
+    }
+  };
+
+  const handleUndoCancel = async (orderNo) => {
+    try {
+      await db.cancelOrder(orderNo, false, '', userRole, currentUser?.user_name);
+      addNotification('Cancellation Undone', `Sale Order ${orderNo} moved back to Pending Approval.`, 'success');
+      await fetchOrdersAndMasters();
+    } catch (e) {
+      console.error("Failed to undo cancellation", e);
+      addNotification('Undo Error', e.message || 'Failed to undo cancellation.', 'error');
+    }
+  };
+
+  const openCancelDialog = (order) => {
+    setCancelTarget(order);
+    setCancelReason('');
+    setCancelError('');
   };
 
   // --- Draft Auto Save Engine ---
@@ -342,7 +377,6 @@ export const SaleOrders = () => {
           />
         </div>
 
-<<<<<<< HEAD
         <select
           value={firmFilter}
           onChange={(e) => setFirmFilter(e.target.value)}
@@ -384,14 +418,6 @@ export const SaleOrders = () => {
           Total Qty: {formatNumber(totalFilteredQty, 3)} MT
         </span>
 
-        {/* Clear draft action helper if draft is saved */}
-        {localStorage.getItem('fms_sale_order_draft') && (
-          <Button variant="ghost" size="sm" onClick={clearDraft} className="text-xs gap-1 text-slate-navy-400 hover:text-slate-navy-650">
-            <RotateCcw className="h-3.5 w-3.5" />
-            Wipe Saved Draft
-          </Button>
-        )}
-=======
         <div className="flex items-center gap-3">
           <span className="text-xs bg-brand-50 text-brand-700 px-3 py-1.5 rounded-lg border border-brand-100 font-bold dark:bg-brand-950/20">
             {activeSubTab === 'active' ? 'Pending Approval' : 'Approved / History'}: {filteredOrders.length}
@@ -405,7 +431,6 @@ export const SaleOrders = () => {
             </Button>
           )}
         </div>
->>>>>>> d767691753845cbc21bc63236a08c1c337e0d426
       </div>
 
       {/* Tab Navigation */}
@@ -474,7 +499,7 @@ export const SaleOrders = () => {
                   <th className="p-4">Date Of Dispatch</th>
                   <th className="p-4">PO Copy</th>
                   <th className="p-4 text-center">Status</th>
-                  {activeSubTab === 'active' && <th className="p-4 text-center">Action</th>}
+                  <th className="p-4 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="text-xs divide-y divide-slate-50 dark:divide-slate-navy-900">
@@ -523,12 +548,13 @@ export const SaleOrders = () => {
                           order.status === 'Completed' && "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50",
                           order.status === 'Pending Invoice' && "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/50",
                           order.status === 'Pending Logistics' && "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200/50",
-                          order.status === 'Pending Approval' && "bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-400 border border-slate-200/50"
+                          order.status === 'Pending Approval' && "bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-400 border border-slate-200/50",
+                          order.status === 'Cancelled' && "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400 border border-red-200/50"
                         )}>
                           {order.status}
                         </span>
                       </td>
-                      {activeSubTab === 'active' && (
+                      <>
                         <td className="p-4 text-center">
                           <button
                             type="button"
@@ -542,7 +568,7 @@ export const SaleOrders = () => {
                             View
                           </button>
                         </td>
-                      )}
+                      </>
                     </tr>
                   ))
                 )}
@@ -878,7 +904,8 @@ export const SaleOrders = () => {
                     selectedOrder.status === 'Completed' && "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50",
                     selectedOrder.status === 'Pending Invoice' && "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/50",
                     selectedOrder.status === 'Pending Logistics' && "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200/50",
-                    selectedOrder.status === 'Pending Approval' && "bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-400 border border-slate-200/50"
+                    selectedOrder.status === 'Pending Approval' && "bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-400 border border-slate-200/50",
+                    selectedOrder.status === 'Cancelled' && "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400 border border-red-200/50"
                   )}>
                     {selectedOrder.status}
                   </span>
@@ -909,6 +936,14 @@ export const SaleOrders = () => {
               )}
             </div>
 
+            {selectedOrder.status === 'Cancelled' && (
+              <div className="rounded-xl bg-red-50 p-4 border border-red-200 text-xs text-red-800 dark:bg-red-950/20 dark:border-red-900/40 dark:text-red-300">
+                <span className="font-bold uppercase tracking-wider text-[9px] block mb-1">Cancelled</span>
+                <p className="font-semibold">Reason: {selectedOrder.cancel_reason || '-'}</p>
+                {selectedOrder.cancelled_by && <p className="mt-0.5 opacity-80">By: {selectedOrder.cancelled_by}</p>}
+              </div>
+            )}
+
             {/* Action options: Approve or Reject at the bottom */}
             <div className="flex justify-between items-center border-t pt-4 mt-6">
               <span className="text-[10px] font-bold text-slate-navy-450 uppercase">
@@ -924,6 +959,35 @@ export const SaleOrders = () => {
                   Close
                 </Button>
                 
+                {selectedOrder.status === 'Cancelled' ? (
+                  hasPageAccess(userRole, 'Admin') && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={async () => {
+                        await handleUndoCancel(selectedOrder.order_no);
+                        setViewModalOpen(false);
+                      }}
+                    >
+                      <RotateCcw className="h-4 w-4 mr-1.5" />
+                      Undo Cancellation
+                    </Button>
+                  )
+                ) : (
+                  <>
+                {(selectedOrder.status === 'Pending Approval' || selectedOrder.status === 'Pending Logistics') &&
+                  hasPageAccess(userRole, 'Sales') && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => {
+                        setViewModalOpen(false);
+                        openCancelDialog(selectedOrder);
+                      }}
+                    >
+                      Cancel Order
+                    </Button>
+                )}
                 {(() => {
                   const isApproved = selectedOrder.status !== 'Pending Approval';
                   const isLocked = selectedOrder.status === 'Pending Invoice' || selectedOrder.status === 'Completed';
@@ -964,11 +1028,47 @@ export const SaleOrders = () => {
                     </>
                   );
                 })()}
+                  </>
+                )}
               </div>
             </div>
 
           </div>
         )}
+      </Dialog>
+
+      {/* --- Dialog Cancel Order --- */}
+      <Dialog
+        isOpen={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        title={`Cancel Sale Order ${cancelTarget?.order_no || ''}`}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-navy-500 font-medium">
+            This order will be marked as Cancelled and will not move to Logistics or Invoices.
+          </p>
+          {cancelError && (
+            <div className="bg-red-50 text-red-700 p-3 rounded-lg border border-red-200 text-xs flex items-center gap-2 font-semibold">
+              <AlertTriangle className="h-4 w-4" />
+              {cancelError}
+            </div>
+          )}
+          <Input
+            label="Reason for cancellation"
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="e.g. Customer withdrew the order"
+          />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setCancelTarget(null)}>
+              Keep Order
+            </Button>
+            <Button type="button" variant="destructive" onClick={handleConfirmCancel}>
+              Confirm Cancel
+            </Button>
+          </div>
+        </div>
       </Dialog>
 
     </div>
