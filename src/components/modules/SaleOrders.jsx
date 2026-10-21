@@ -1074,4 +1074,4 @@ export const SaleOrders = () => {
     </div>
   );
 };
-export default SaleOrders;
+export default SaleOrders; 
