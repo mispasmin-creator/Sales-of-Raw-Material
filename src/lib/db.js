@@ -62,7 +62,14 @@ class DatabaseService {
     try {
       const blob = this.base64ToBlob(base64Data, mimeType);
       const bucketName = 'Sales of Raw Material Image';
-      const filePath = `Images/${Date.now()}_${fileName}`;
+      // Storage object keys must be URL-safe: a name like "PO 80% BXT.pdf" produces an
+      // invalid URL ("80%%20BXT"), the request is rejected without CORS headers and the
+      // browser reports it as a CORS error. Keep letters, digits, dot, dash, underscore only.
+      const dotIdx = fileName.lastIndexOf('.');
+      const base = dotIdx > 0 ? fileName.slice(0, dotIdx) : fileName;
+      const ext = dotIdx > 0 ? fileName.slice(dotIdx + 1).replace(/[^a-zA-Z0-9]/g, '') : '';
+      const safeBase = base.replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'file';
+      const filePath = `Images/${Date.now()}_${safeBase}${ext ? '.' + ext : ''}`;
       
       const { data, error } = await this.supabase.storage
         .from(bucketName)

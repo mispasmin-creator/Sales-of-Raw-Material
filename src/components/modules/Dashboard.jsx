@@ -111,9 +111,15 @@ export const Dashboard = () => {
         }
       });
 
-      const productSales = Object.keys(prodMap).map(key => ({
-        name: key.split(' ')[0], // short name
-        value: prodMap[key]
+      // Short name = first word; merge products sharing it (e.g. "MC - 90" & "MC 70")
+      const shortMap = {};
+      Object.keys(prodMap).forEach(key => {
+        const short = key.split(' ')[0];
+        shortMap[short] = (shortMap[short] || 0) + prodMap[key];
+      });
+      const productSales = Object.keys(shortMap).map(name => ({
+        name,
+        value: shortMap[name]
       }));
 
       // Fallback if no completed orders
@@ -307,7 +313,7 @@ export const Dashboard = () => {
           {/* Pie Legends */}
           <div className="flex flex-wrap justify-center gap-3 text-[11px] font-semibold text-slate-navy-500">
             {chartData.productSales.map((entry, index) => (
-              <span key={entry.name} className="flex items-center gap-1">
+              <span key={`${entry.name}-${index}`} className="flex items-center gap-1">
                 <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
                 {entry.name}
               </span>
