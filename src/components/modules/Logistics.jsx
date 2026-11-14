@@ -16,6 +16,7 @@ import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Dialog } from '../ui/dialog';
 import { useApp } from '../../context/AppContext';
+import { ReplaceDocButton } from '../shared/ReplaceDocButton';
 import { cn, formatCurrency, formatNumber, hasPageAccess, filterByFirmAccess } from '../../lib/utils';
 
 export const Logistics = () => {
@@ -472,6 +473,7 @@ export const Logistics = () => {
                               <span>View</span>
                             </button>
                           ) : '-'}
+                          <ReplaceDocButton kind="PO" orderNo={order.order_no} onReplaced={fetchPendingOrders} className="ml-1" />
                         </td>
                         {activeSubTab === 'history' && (
                           <>
@@ -496,6 +498,7 @@ export const Logistics = () => {
                                   <span>View</span>
                                 </button>
                               ) : '-'}
+                              {log && <ReplaceDocButton kind="Bilty" orderNo={order.order_no} onReplaced={fetchPendingOrders} className="ml-1" />}
                             </td>
                           </>
                         )}

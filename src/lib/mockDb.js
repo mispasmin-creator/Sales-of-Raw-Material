@@ -400,6 +400,27 @@ export const mockDb = {
     return newLogistics;
   },
 
+  // Admin document replace: point an existing record at a new file URL
+  setDocumentUrl(kind, orderNo, url) {
+    const map = {
+      PO: ['orders', 'po_copy_url'],
+      Bilty: ['logistics', 'bilty_copy_url'],
+      Invoice: ['invoices', 'invoice_copy_url']
+    };
+    const [collection, field] = map[kind];
+    const list = getCollection(collection, []);
+    let changed = false;
+    list.forEach(r => {
+      if (r.order_no === orderNo) {
+        r[field] = url;
+        r.updated_at = new Date().toISOString();
+        changed = true;
+      }
+    });
+    if (changed) saveCollection(collection, list);
+    return changed;
+  },
+
   // --- Invoices ---
   getInvoices() {
     return getCollection('invoices', SEED_INVOICES);

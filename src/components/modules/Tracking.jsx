@@ -15,6 +15,7 @@ import db from '../../lib/db';
 import { Button } from '../ui/button';
 import { Select } from '../ui/select';
 import { useApp } from '../../context/AppContext';
+import { ReplaceDocButton } from '../shared/ReplaceDocButton';
 import { cn } from '../../lib/utils';
 
 export const Tracking = () => {
@@ -56,6 +57,14 @@ export const Tracking = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Re-read data after an Admin replaces a document, keeping the same order selected
+  const refreshAfterReplace = async () => {
+    const list = (await db.getOrders()).filter(o => o.status !== 'Cancelled');
+    setOrders(list);
+    const fresh = list.find(o => o.order_no === selectedOrder?.order_no);
+    if (fresh) await handleSelectOrder(fresh);
   };
 
   const handleSelectOrder = async (order) => {
@@ -205,6 +214,7 @@ export const Tracking = () => {
                     <FileText className="h-4 w-4 text-brand-600" />
                     Review Contract PO
                   </Button>
+                  <ReplaceDocButton kind="PO" orderNo={selectedOrder.order_no} onReplaced={refreshAfterReplace} />
                 </div>
 
                 {/* Vertical Timeline Mapping */}
@@ -316,6 +326,7 @@ export const Tracking = () => {
                                 >
                                   Open Bilty Note
                                 </button>
+                                <ReplaceDocButton kind="Bilty" orderNo={selectedOrder.order_no} onReplaced={refreshAfterReplace} />
                               </div>
                             </div>
                           );
@@ -403,6 +414,7 @@ export const Tracking = () => {
                                 >
                                   Open Tax Invoice
                                 </button>
+                                <ReplaceDocButton kind="Invoice" orderNo={selectedOrder.order_no} onReplaced={refreshAfterReplace} />
                               </div>
                             </div>
                           );

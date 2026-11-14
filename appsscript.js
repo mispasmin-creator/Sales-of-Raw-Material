@@ -276,6 +276,47 @@ function doPost(e) {
     }
     
     // ==========================================
+    // ACTION 5: REPLACE DOCUMENT (PO = J, Bilty = S, Invoice = AA)
+    // ==========================================
+    else if (action === "REPLACE_DOCUMENT") {
+      var orderNo = postData.order_no || "";
+      var rowIndex = orderNo ? findRowIndexByOrderNo(sheet, orderNo) : -1;
+      if (rowIndex === -1) {
+        return ContentService.createTextOutput(JSON.stringify({
+          status: "error",
+          message: "Order not found in Sheet: " + orderNo
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+
+      var colByKind = { "PO": 10, "Bilty": 19, "Invoice": 27 };
+      var targetCol = colByKind[postData.kind];
+      if (!targetCol || !postData.file_base64 || !postData.file_name) {
+        return ContentService.createTextOutput(JSON.stringify({
+          status: "error",
+          message: "kind, file_base64 and file_name are required."
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+
+      var newUrl = uploadToGoogleDrive(
+        postData.file_base64,
+        postData.file_name,
+        postData.file_type || "application/octet-stream"
+      );
+      if (!newUrl) {
+        return ContentService.createTextOutput(JSON.stringify({
+          status: "error",
+          message: "Drive upload failed."
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+
+      sheet.getRange(rowIndex, targetCol).setValue(newUrl);
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        message: postData.kind + " copy replaced for " + orderNo
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // ==========================================
     // ACTION 4: CANCEL / UNDO CANCEL (AB to AD)
     // ==========================================
     else if (action === "CANCEL_ORDER") {

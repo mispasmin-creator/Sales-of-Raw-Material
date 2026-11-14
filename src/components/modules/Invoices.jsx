@@ -15,6 +15,7 @@ import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Dialog } from '../ui/dialog';
 import { useApp } from '../../context/AppContext';
+import { ReplaceDocButton } from '../shared/ReplaceDocButton';
 import { cn, formatCurrency, formatNumber, hasPageAccess, filterByFirmAccess } from '../../lib/utils';
 
 export const Invoices = () => {
@@ -331,6 +332,7 @@ export const Invoices = () => {
                               <span>View</span>
                             </button>
                           ) : '-'}
+                          <ReplaceDocButton kind="PO" orderNo={order.order_no} onReplaced={fetchOrdersPendingInvoice} className="ml-1" />
                         </td>
                         <td className="p-4 font-semibold text-slate-navy-800 dark:text-slate-200">
                           {log?.transporter_name || '-'}
@@ -353,6 +355,7 @@ export const Invoices = () => {
                               <span>View</span>
                             </button>
                           ) : '-'}
+                          {log && <ReplaceDocButton kind="Bilty" orderNo={order.order_no} onReplaced={fetchOrdersPendingInvoice} className="ml-1" />}
                         </td>
                         {activeSubTab === 'history' && (
                           <>
@@ -371,6 +374,7 @@ export const Invoices = () => {
                                   <span>View</span>
                                 </button>
                               ) : '-'}
+                              {inv && <ReplaceDocButton kind="Invoice" orderNo={order.order_no} onReplaced={fetchOrdersPendingInvoice} className="ml-1" />}
                             </td>
                           </>
                         )}

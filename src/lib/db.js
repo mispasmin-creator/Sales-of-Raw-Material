@@ -788,6 +788,81 @@ class DatabaseService {
     return result;
   }
 
+  // Admin-only: replace an uploaded PO / Bilty / Invoice copy. kind: 'PO' | 'Bilty' | 'Invoice'
+  async replaceDocument(kind, orderNo, file, userRole, userName) {
+    await this.delay();
+    if (!String(userRole || '').split(',').map(r => r.trim()).includes('Admin')) {
+      throw new Error('Only Admin can replace uploaded documents.');
+    }
+    if (!['PO', 'Bilty', 'Invoice'].includes(kind)) throw new Error(`Unknown document type: ${kind}`);
+    if (!file || !file.base64 || !file.name) throw new Error('No file selected.');
+
+    const orders = await this.getOrders();
+    const order = orders.find(o => o.order_no === orderNo);
+    if (!order) throw new Error(`Order ${orderNo} not found.`);
+
+    const sheetUrl = import.meta.env.VITE_APPSCRIPT_URL;
+    const sheetMode = !!sheetUrl && sheetUrl !== 'YOUR_APPSCRIPT_URL';
+
+    if (this.useSupabase) {
+      const newUrl = await this.uploadToSupabaseStorage(file.base64, file.name, file.type);
+      const now = new Date().toISOString();
+      let query;
+      if (kind === 'PO') {
+        query = this.supabase.from('orders').update({ po_copy_url: newUrl, updated_at: now }).eq('order_no', orderNo);
+      } else if (kind === 'Bilty') {
+        query = this.supabase.from('logistics').update({ bilty_copy_url: newUrl }).eq('order_id', order.id);
+      } else {
+        query = this.supabase.from('invoices').update({ invoice_copy_url: newUrl }).eq('order_id', order.id);
+      }
+      const { error } = await query;
+      if (error) throw error;
+      // Keep any local copy of the record in step
+      mockDb.setDocumentUrl(kind, orderNo, newUrl);
+    } else if (sheetMode) {
+      // Drive upload happens in Apps Script; clear stale local url so the sheet url is used
+      mockDb.setDocumentUrl(kind, orderNo, '');
+    } else {
+      const newUrl = `data:${file.type || 'application/octet-stream'};base64,${file.base64}`;
+      if (!mockDb.setDocumentUrl(kind, orderNo, newUrl)) {
+        throw new Error(`No ${kind} record found for ${orderNo}.`);
+      }
+    }
+
+    if (sheetMode) {
+      await this.syncReplaceDocumentToGoogleSheet({ kind, order_no: orderNo, file });
+      this._sheetRowsPromise = null; // force fresh sheet read
+    }
+
+    await this.addLog(userRole || 'Admin', `${kind} Copy Replaced for Order ${orderNo}`, {
+      order_no: orderNo,
+      file_name: file.name,
+      by: userName || userRole
+    });
+    return true;
+  }
+
+  async syncReplaceDocumentToGoogleSheet({ kind, order_no, file }) {
+    const url = import.meta.env.VITE_APPSCRIPT_URL;
+    try {
+      await fetch(url, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "REPLACE_DOCUMENT",
+          kind,
+          order_no,
+          file_base64: file.base64,
+          file_name: file.name,
+          file_type: file.type || ""
+        })
+      });
+    } catch (error) {
+      console.error("Error syncing replaced document to Google Sheet:", error);
+    }
+  }
+
   readLocalCancel(orderNo) {
     try {
       return JSON.parse(localStorage.getItem('fms_cancel_' + orderNo) || 'null');

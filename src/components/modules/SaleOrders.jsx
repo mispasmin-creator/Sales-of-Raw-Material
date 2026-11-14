@@ -17,6 +17,7 @@ import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Dialog } from '../ui/dialog';
 import { useApp } from '../../context/AppContext';
+import { ReplaceDocButton } from '../shared/ReplaceDocButton';
 import { cn, formatCurrency, formatNumber, hasPageAccess, filterByFirmAccess, parseMultiValue } from '../../lib/utils';
 
 export const SaleOrders = () => {
@@ -541,6 +542,7 @@ export const SaleOrders = () => {
                             <span>View</span>
                           </button>
                         ) : '-'}
+                        <ReplaceDocButton kind="PO" orderNo={order.order_no} onReplaced={fetchOrdersAndMasters} className="ml-1" />
                       </td>
                       <td className="p-4 text-center">
                         <span className={cn(
@@ -934,6 +936,14 @@ export const SaleOrders = () => {
                   View PO Copy
                 </button>
               )}
+              <ReplaceDocButton
+                kind="PO"
+                orderNo={selectedOrder.order_no}
+                onReplaced={async () => {
+                  await fetchOrdersAndMasters();
+                  setViewModalOpen(false);
+                }}
+              />
             </div>
 
             {selectedOrder.status === 'Cancelled' && (
